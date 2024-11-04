@@ -1,0 +1,52 @@
+
+Concept of Operations
+
+Start-up Sequence
+1. Connect battery charger to batteries
+2. Power-on battery charger (power button)
+3. Enter automatic or manual mode of operation
+
+Manual Mode
+1. Select battery to be charged (1 or 2)
+   (Menu selection using mode button)
+2. Select charging mode for battery (fast, topping, trickle, storage)
+   (Menu selection using mode button)
+3. Start charging cycle(s) 
+   (Menu selection using mode button??)
+4. Stops after 24 hour trickle charge (return to main menu)
+
+Automatic Mode
+1. Selects battery #1 to start charging cycle
+2. Selects charging mode based on battery voltage:
+	a. Voltage >= minimum threshold --> Topping charge
+	b. Voltage <  minimum threshold --> Fast charge
+3. Switches to battery #2 after 24 hour trickle charge
+4. Switches to storage mode after both battery #1 and #2 charged
+
+
+State machine sequence for automatic mode:
+1.  Startup initialization
+2.  Battery #1 condition check
+3.  Battery #1 fast charge (if voltage is low)
+4.  Battery #1 topping charge
+5.  Battery #1 trickle charge
+6.  Battery #2 condition check 
+7.  Battery #2 fast charge (if voltage is low)
+8.  Battery #2 topping charge
+9.  Battery #2 trickle charge
+10. Storage (1 week)
+11. Return to state #2
+
+
+State machine sequence for manual mode:
+1.  Startup initialization
+2.  Select charge parameters
+3.  Check condition of selected battery
+3.  Run fast charge if selected
+	* Run topping charge
+	* Run trickle charge (24 hours)
+4.  Run topping charge if selected
+	* Run trickle charge (24 hours)
+5.  Run load test if selected
+6.  Return to state #2
+
