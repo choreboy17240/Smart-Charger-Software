@@ -1,7 +1,6 @@
 /**
  * @file rgbled.h
- *
- * @brief RGB LED support functions
+ * @brief RGB LED class
  */
 #ifndef _RGBLED_H_
 #define _RGBLED_H_
@@ -31,12 +30,14 @@ public:
      * @param g: Pin used for green color
      * @param b: Pin used for blue color
      * @param color: Initial color for RGB LED
+     * @returns Nothing
      */
     void begin(PinNumber r, PinNumber g, PinNumber b, rgb_t color=LED_BLK);
 
     /**
      * @brief Set color of RGB led
-     * @param color: Color for RGB LED
+     * @param value: Color values for RGB LED
+     * @returns Nothing
      */
     void color(rgb_t value);
 

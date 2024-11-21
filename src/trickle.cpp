@@ -1,7 +1,8 @@
-/// @file trickle.cpp
-//
-// Trickle charging handler
-// 
+/**
+ *  @file trickle.cpp
+ *  @brief Trickle charging cycle handler for SLA batteries
+ * 
+ */
 #include "trickle.h"
 
 //

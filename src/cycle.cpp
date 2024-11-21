@@ -1,26 +1,27 @@
 /**
  * @file cycle.cpp
- *
- * @brief Battery charging cycle base object
+ * @brief Base class for creating custom battery charging cycles handlers
  */
 
 #include "obcharger.h"
 #include "cycle.h"
 
 // OLED display support
-#include <SPI.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
+#include <STM32_4kOLED.h>
+
+// Ring buffer
+#include <ringbuffer.h>
 
 //
 // Global variables
 //
-extern Alarm_Pool timer_pool;               // Hardware timers
-extern Vreg vreg;                           // Voltage regulator
-extern Battery battery;                     // Battery
-extern RGB_LED rgb_led;                     // RGB status LED
-extern bool oled_found;                     // OLED display found at startup in main()?
-extern Adafruit_SSD1306 display;            // OLED display device
+extern Alarm_Pool timer_pool;               ///< Hardware timers
+extern Vreg vreg;                           ///< Voltage regulator
+extern Battery battery;                     ///< Battery
+extern RGB_LED rgb_led;                     ///< RGB status LED
+extern bool oled_found;                     ///< OLED display found at startup in main()?
+extern SSD1306PrintDevice oled;             ///< OLED display object
+extern RingBuffer16 rb_charging_current;      ///< Charging current readings
 
 // Default constructor
 Charge_Cycle::Charge_Cycle() {
@@ -102,16 +103,13 @@ void Charge_Cycle::start() {
     led_state = true;
     led_timer = start_time;
 
-    // Display startup message to serial console only
-    Serial.printf("Starting %s charging cycle\n", name_str);
+    // Display startup message and field names to serial console only
+    Serial.printf("Starting %s charging cycle\n\n", name_str);
+    Serial.printf("Cycle, Time, \"Bus Voltage\", \"Battery Voltage\", \"Charging Current\"\n");
 
     // Clear OLED display to prepare for new charging cycle messages
     if (oled_found) {
-        display.clearDisplay();
-        display.setTextSize(1);      // Default 6x8 character size
-        display.setTextColor(SSD1306_WHITE); // Draw white text
-        display.cp437(true);         // Use full 256 char 'Code Page 437' font
-        display.display();
+        oled.clear();
     }
 }
 
@@ -199,9 +197,14 @@ void Charge_Cycle::status_message() {
         // Display charging status
 
         // Get current charging parameters
-        current_ma_t charging_current = vreg.get_current_mA();
-        FXPTQ1616 battery_voltage = battery.get_voltage();
+        // current_ma_t charging_current = vreg.get_current_mA();
+        // current_ma_t charging_current = vreg.get_current_average_mA();
+        current_ma_t charging_current = (uint32_t)(rb_charging_current.average());
 
+        // FXPTQ1616 battery_voltage = battery.get_voltage();
+        FXPTQ1616 battery_voltage = battery.get_voltage_average();
+        FXPTQ1616 bus_voltage = FXPTQ1616(vreg.get_voltage());
+        
         // Create elapsed time string (HH:MM:SS) in hms_str buffer
         // ms_to_hms_str(millis()-start_time, hms_str);
         ms_to_hms_str(charging_time_elapsed(), hms_str);
@@ -209,19 +212,26 @@ void Charge_Cycle::status_message() {
         // Create battery voltage string (xx.x) in bv_str buffer
         battery_voltage.to_string(bv_str, sizeof(bv_str), "%2.1f");
 
+        // Create output voltage string (xx.x) in ov_str butter
+        bus_voltage.to_string(ov_str, sizeof(ov_str), "%2.1f");
+
         // Write message to OLED display if present
-        // Assumes display is configured for the default 5x7 font and 1X size
+        // Assumes display is configured for the default 8x16 proportional font
         // Note: OLED display is cleared at the start of charging cycle
         if (oled_found) {
-            display.clearDisplay();
-            display.setCursor(0,0);
-            display.printf("%s %s", title_str, hms_str);
-            display.setCursor(0,10);
-            display.printf("%s V %4u mA", bv_str, charging_current);
-            display.display();
+            oled.clear();
+            oled.setCursor(0,0);
+            oled.printf("%s", title_str);
+            oled.setCursor(64,0);
+            oled.printf("%s", hms_str);
+            oled.setCursor(0,2);
+            oled.printf("%s V", bv_str);
+            oled.setCursor(64,2);
+            oled.printf("%u mA", charging_current);
+            oled.switchFrame();
         }
 
         // Write console message
-        Serial.printf("%s %s Battery @ %s V, %04u mA\n", title_str, hms_str, bv_str, charging_current);
+        Serial.printf("%s, %s, %s, %s, %u\n", name_str, hms_str, ov_str, bv_str, charging_current);
     }
 }

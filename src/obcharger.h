@@ -1,6 +1,5 @@
 /**
  * @file obcharger.h
- * 
  * @brief On-board charger type definitions and constants
  */
 #ifndef _OB_CHARGER_H_
@@ -19,6 +18,12 @@ const bool DEBUG_MODE = true;                   ///< Enable debug mode (true or 
 const bool VERBOSE_MODE = true;                 ///< Enable verbose mode (true or false)
 
 //
+// Software version information (update with new releases)
+//
+#define OBC_VERSION     "0.2"                   ///< Software revision number (x.x)
+#define OBC_RELDATE     "11/21/2024"            ///< Software release date (MM/DD/YYYY)
+
+//
 // Application-specific type definitions
 //
 typedef uint32_t    PinNumber;                  ///< GPIO pin number (Arduino PinName counterpart)
@@ -35,9 +40,9 @@ typedef uint32_t    current_ma_t;               ///< Current in integer format (
 // A/D converter constants
 // STM32 G030 series provides a 12-bit A/D converter
 //
-const uint32_t AN_READ_BITS = 12;               //< A/D converter resolution
-const uint32_t AN_READ_MAX  = (1 << 12);        //< A/D converter max value
-const voltage_mv_t AN_REF_VOLTAGE = 3300;       //< A/D converter reference
+const uint32_t AN_READ_BITS = 12;               ///< A/D converter resolution
+const uint32_t AN_READ_MAX  = (1 << 12);        ///< A/D converter max value
+const voltage_mv_t AN_REF_VOLTAGE = 3300;       ///< A/D converter reference
 
 //
 // Application-specific type definitions and constants
@@ -45,9 +50,9 @@ const voltage_mv_t AN_REF_VOLTAGE = 3300;       //< A/D converter reference
 
 const time_ms_t LOOP_DELAY = 100;           ///< Loop timer delay
 
-//
-// Global charger states
-//
+/**
+ *  @brief Global charger states
+ */
 enum charger_state_t {
     CHARGER_STARTUP = 1,                    ///< Startup initialization
     CHARGER_MENU = 2,                       ///< Menu selection (not implemented)
@@ -60,9 +65,9 @@ enum charger_state_t {
     CHARGER_CONDITION = 9                   ///< Battery conditioning (not implemented)
 };
 
-//
-// Charging cyle states
-//
+/**
+ *  @brief Charging cyle states
+ */
 enum cycle_state_t {
     CYCLE_INIT = 1,                         ///< Cycle in initialization phase
     CYCLE_STARTUP = 2,                      ///< Cycle running normally in startup phase
@@ -90,15 +95,14 @@ const PinNumber GP_LEDR = PB8;              ///< RBG LED red (0=on, 1=Off)
 const PinNumber GP_LEDG = PB7;              ///< RGB LED green (0=on, 1=Off)
 const PinNumber GP_LEDB = PB6;              ///< RGB LED blue (0=on, 1=Off)
 
-//
-// RGB LED support
-//
-struct RGB {
-    uint8_t r;
-    uint8_t g;
-    uint8_t b;
-};
-typedef struct RGB rgb_t;
+/**
+ *  @brief RGB LED color value structure
+ */
+typedef struct {
+    uint8_t r;                              ///< Red color value
+    uint8_t g;                              ///< Green color value
+    uint8_t b;                              ///< Blue color value
+} rgb_t;
 
 const rgb_t LED_BLK = { 0, 0, 0 };          ///< Black
 const rgb_t LED_CYN = { 3, 232, 252 };      ///< Cyan
@@ -114,8 +118,8 @@ const rgb_t LED_YLW_DRK = { 73, 76, 1 };    ///< Dark yellow
 const rgb_t LED_WHT = { 255, 255, 255 };    ///< White
 
 // RGB LED status flag values
-const bool LED_ON = true;
-const bool LED_OFF = false;
+const bool LED_ON = true;                   ///< LED enabled (on)
+const bool LED_OFF = false;                 ///< LED disabled (off)
 
 //
 // I2C buses and devices
@@ -149,24 +153,27 @@ const PinNumber GP_AN_BATTERY = PA0;        ///< Battery voltage A/D
 const uint32_t R_BATT_LO = 10;              ///< Resistor divider lower value (K)
 const uint32_t R_BATT_HI = 39;              ///< Resistor divider upper value (K)
 
-const uint16_t BATTERY_CAPACITY = 5500;     ///< Battery capacity in mA/hours
+const uint16_t BATTERY_CAPACITY = 5500;     ///< Battery capacity in mA/hours.
 
 //
 // Voltage regulator parameters
 //
-const voltage_mv_t VREG_VOLTAGE_MIN = 5000;  ///< Minimum allowable voltage (mV)
-const voltage_mv_t VREG_VOLTAGE_MAX = 16000; ///< Maximum allowable voltage (mV)
-const voltage_mv_t VREG_VOLTAGE_STEP = 100;  ///< Voltage step size (mV)
+const voltage_mv_t VREG_VOLTAGE_MIN = 5000;  ///< Voltage regulator minimum allowable voltage (mV).
+const voltage_mv_t VREG_VOLTAGE_MAX = 16000; ///< Voltage regulator maximum allowable voltage (mV).
 
-// Threshold for initial charge state, used to determine whether to jump
-// to fast charge (< threshold) or topping charge (>= threshold).
-const voltage_mv_t BATTERY_DISCHARGED_MV = 13000;   ///< Threshold voltage for fast charge
+/** 
+ *  @brief Threshold voltage (mV) used to determine initial charge state.  Charger will
+ *  jump to fast charging if below the threshold, or topping charging if at or above
+ *  this voltage.
+ */
+const voltage_mv_t BATTERY_DISCHARGED_MV = 13000;
 
-//
-// Voltage hystersis limits
-// Used to adjust upper/lower limits to reduce dithering in the output
-// and smooth out voltage adjustments.
-//
-const voltage_mv_t VOLTS_HYSTERESIS = 50;  ///< Hystersis voltage limits (mV)
+/**
+ *  @brief Voltage hystersis limits (mV) for charging cycles.
+ *  Used to adjust upper/lower limits to reduce dithering in the output
+ *  and smooth out voltage adjustments.
+ */
+const voltage_mv_t VOLTS_HYSTERESIS = 100;
+
 
 #endif

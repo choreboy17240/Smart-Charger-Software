@@ -1,7 +1,8 @@
 /**
- * @file trickle.h
+ *  @file trickle.h
+ *  @brief Trickle charging cycle handler for SLA batteries
  * 
- * @mainpage Trickle charging handler
+ *  @details
  *  Called by the exec supervisor to manage the trickle charging cycle from
  *  start to finish.  The trickle charging algorithm used to charge the battery
  *  applies constant VOLTS_TARGET voltage level to the battery indefinitely.
@@ -41,13 +42,37 @@
 #include <stm32_time.h>
 
 /**
- * @brief Trickle charge cycle class
+ * @brief Trickle charging cycle handler for SLA batteries
  * 
- * @details Derived from the Charge_Cycle base object, with the following
- * methods overriden to support application-specific functionality:
+ * @details Derived from the Charge_Cycle base object, with the run()
+ * method overriden to support a trickle charging algorithm for SLA
+ * (sealed lead-acid) batteries.
  * 
- * * run()
- * * status_message()
+ * The algorithm implemented by this handler seeks to charge the battery
+ * using a constant voltage (typically 2.25-2.27 volts/cell at 25 degrees C)
+ * for an indefinite time period to maintain the battery's state of charge 
+ * without degrading battery life.
+ * 
+ * Charging current is normally limited due to the modest voltage
+ * applied to the battery, but will also be limited by the algorithm to the
+ * maximum level specified by the user.  This limit will typically be driven
+ * by either (1) the maximum safe charging current for the battery, or 
+ * (2) the maximum current that can be provided by the voltage regulator.
+ * 
+ * To avoid over-stressing the battery and voltage regulator circuit,
+ * the cycle will start with the regulator voltage set to slightly below
+ * the current measured battery voltage. The charging voltage is ramped-up
+ * at a rate determined by the step voltage specified by the user to align
+ * the charging current between the target and maximum current levels.
+ * 
+ * These parameters are configurable and are set when the handler
+ * is initialized using the init() method.  See the documentation
+ * for the charge_parm_t structure for details on the configuration
+ * parameters for this handler (and others derived from the
+ * Charge_Cycle base class).
+ * 
+ * See the documentation for the Charge_Cycle base class for more
+ * general information on the charging cycle handle infrastructure.
  * 
  */
 class Trickle_Charger : public Charge_Cycle {

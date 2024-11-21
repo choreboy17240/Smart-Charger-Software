@@ -1,8 +1,14 @@
+/**
+ *  @file main.cpp
+ * 
+ *  @brief Main source file with setup() and loop() functions
+ * 
+ */
+
 #include <Arduino.h>
 
 #include "obcharger.h"
 #include "rgbled.h"
-#include "oled.h"
 #include "battery.h"
 #include "fast.h"
 #include "topping.h"
@@ -11,68 +17,88 @@
 // Libraries
 #include <i2c_busio.h>
 #include <ina219.h>
+#include <ringbuffer.h>
 
 // OLED display support
-#include <SPI.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
+#include <STM32_4kOLED.h>
+
+/// I2C address for 128x32 display
+#define ADDRESS_128x32  0x3C
+
+/// I2C address for 128x64 display
+#define ADDRESS_128x64  0x3D    
+
 
 //=============================================================================
 // Global variables
 //=============================================================================
 
-// Master start time (beginning of program)
+/// Master start time (beginning of program)
 time_ms_t start_time;
 
-// Loop timer
+/// Loop timer
 time_ms_t loop_timer;
 
-// Master charger state
+/// Master charger state
 charger_state_t charger_state;
 
-// Timer support
+/// Timer support
 Alarm_Pool timer_pool;
 
-// Timer pool interrupt handler
+/**
+ *  @brief Timer pool interrupt handler used by the Alarm class
+ */
 void timer_pool_handler(void) {
     timer_pool.dec();
 }
 
-// Global charging task handlers
+/// Fast charging cycle handler, derived from the `Charge_Cycle` class
 Fast_Charger fast_charger;
+/// Topping charging cycle handler, derived from the `Charge_Cycle` class
 Topping_Charger topping_charger;
+/// Trickle charging cycle handler, derived from the `Charge_Cycle` class
 Trickle_Charger trickle_charger;
 
-// I2C bus
+/// I2C bus object
 I2C main_i2c_bus = I2C(&Wire, I2C0_SCL_GPIO, I2C0_SDA_GPIO, I2C0_BAUDRATE);
 
-// Battery
+/// Battery object
 Battery battery;
 
-// Current sensor
+/// Current sensor object
 INA219 sensor;
 
-// DAC
+/// DAC object
 MCP4726 dac;
 
-// Voltage regulator
+/// Voltage regulator object
 Vreg vreg;
 
-// RGB LED
+/// RGB LED object
 RGB_LED rgb_led;
 
-// Optional OLED display
-bool oled_found = false;    // Indicate whether OLED display was detected
-Adafruit_SSD1306 display(DISPLAY_WIDTH, DISPLAY_HEIGHT, &Wire, OLED_RESET);
+/// Indicates whether OLED display was detected
+bool oled_found = false;   
 
-// General ASCIIZ string message buffer
+// SSD1306 display object
+SSD1306PrintDevice oled(&tiny4koled_begin_wire, &tiny4koled_beginTransmission_wire, &datacute_write_wire, &datacute_endTransmission_wire);
+
+// Ring buffer for current readings
+RingBuffer16 rb_charging_current(10);
+
+/// General ASCIIZ string message buffer
 char buffer[81];
 
 //=============================================================================
 // Utility functions
 //=============================================================================
 
-// Print-out I2C scan results
+/**
+ *  @brief Print-out I2C scan results to the serial console.
+ *  @param addresses_found: Table containing status of I2C addresses from scan.
+ *  @note Active I2C addresses found during the I2C bus scan will be set to a
+ *        `true` value.  Inactive I2C addresses will be set to a `false` value.
+ */
 void i2c_map(bool *addresses_found) {
     Serial.printf("    0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F\n");
  
@@ -89,10 +115,36 @@ void i2c_map(bool *addresses_found) {
     }
 }
 
+/**
+ *  @brief Display software version information to the serial console.
+ *  @note Uses the global string buffer to temporarily hold version
+ *        string information.
+ */
+void display_library_versions(void) {
+    char version[6];  // Version string (xx.x) with \0
+    char reldate[12]; // Release date string (MM/DD/YYYY) with \0
 
-//=============================================================================
-// Setup
-//=============================================================================
+    // INA219 sensor library
+    sensor.version(version, sizeof(version)/sizeof(char));
+    sensor.reldate(reldate, sizeof(reldate)/sizeof(char));
+    Serial.printf("INA219 current/power sensor library v%s (%s)\n", version, reldate);
+
+    // MCP4726 DAC library
+    dac.version(version, sizeof(version)/sizeof(char));
+    dac.reldate(reldate, sizeof(reldate)/sizeof(char));
+    Serial.printf("MCP4726 DAC library v%s (%s)\n", version, reldate);
+
+    // Ring buffer library
+    rb_charging_current.version(version, sizeof(version)/sizeof(char));
+    rb_charging_current.reldate(reldate, sizeof(reldate)/sizeof(char));
+    Serial.printf("Ring buffer library v%s (%s)\n", version, reldate);
+}
+
+
+/**
+ *  @brief Arduino setup function.
+ *  @returns Nothing
+ */
 void setup() {
 
     // Configure Serial port
@@ -104,21 +156,29 @@ void setup() {
     Wire.setSDA(PA12);
     Wire.begin();
 
+    // Greeting messages
+    Serial.printf("\n");
+    Serial.printf("On-board Battery Charger v%s (%s)\n", OBC_VERSION, OBC_RELDATE);
+    display_library_versions();
+    Serial.printf("\n");
+
     // Record system start-up time
     Serial.printf("Starting initialization now\n");
     start_time = millis();
 
     // Scan I2C buses
     // Use dynamic array to hold results, memory is released below
-    Serial.printf("Scanning I2C Wire bus...\n");
+    Serial.printf("Scanning I2C Wire bus... ");
     bool *addresses_found = new bool[128];
     int number_found = main_i2c_bus.scan(addresses_found, false);
     Serial.printf("Done!\n");
 
     // Display results
     Serial.printf("Found %u devices on Wire I2C bus \n", number_found);
+    Serial.printf("\n");
     Serial.printf("Results of the I2C scan:\n");
     i2c_map(addresses_found);
+    Serial.printf("\n");
 
     // Check if the optional OLED I2C display is installed
     // Initialize it if successfully detected on the I2C bus
@@ -128,19 +188,15 @@ void setup() {
     if (oled_found) {
         Serial.printf("- found at address 0x%x\n", ADDRESS_128x32);
         Serial.printf("Initializing OLED display ");
-        if (!display.begin(SSD1306_SWITCHCAPVCC, ADDRESS_128x32, NO_HARD_RESET, NO_WIRE_INIT)) {
-            // OLED display initialization issue
-            // Report error and disable the OLED display usage
-            Serial.printf("- Error: SSD1306 allocation failed\n");
-            oled_found = false;
-        } else {
-            display.clearDisplay();
-            display.setTextSize(2);      // Default 6x8 character size
-            display.setTextColor(SSD1306_WHITE); // Draw white text
-            display.cp437(true);         // Use full 256 char 'Code Page 437' font
-            display.display();
-            Serial.printf("- Done\n");
-        };
+        oled.begin();
+        oled.setRotation(1);
+        oled.setInternalIref(true);    // Lower brightness
+        oled.setContrast(40);           // Approx 16% brightness
+        oled.setFont(FONT8X16P);        // 8x16 proportional font
+        oled.clear();
+        oled.on();
+        oled.switchRenderFrame();       // Switch to non-display page
+        Serial.printf("- Done\n");
     } else {
         Serial.printf("- NOT found at address 0x%x\n", ADDRESS_128x32);
     };
@@ -174,6 +230,7 @@ void setup() {
     topping_charger.init(TOP_PARMS);
     trickle_charger.init(TRCKL_PARMS);
     Serial.printf("- Done\n");
+    Serial.printf("\n");
 
     // FIXME: ADD SUPPORT FOR STORAGE CHARGING CYCLE
     
@@ -184,16 +241,19 @@ void setup() {
     loop_timer = millis();
 }
 
-//=============================================================================
-// Main loop
-//=============================================================================
+/**
+ *  @brief Arduino main loop function.
+ *  @returns Nothing
+ */
 void loop() {
-
     // Former charging supervisor routine moved to loop() to be consistent
     // with the usual Arduino approach
     if ((millis() - loop_timer) >= LOOP_DELAY) {
         // Run charging supervisor
         loop_timer = millis();
+
+        // Update cached charging current readings
+        rb_charging_current.append((uint16_t)(vreg.get_current_average_mA()));
 
         switch (charger_state) {
             case CHARGER_STARTUP: {

@@ -1,7 +1,7 @@
-/// @file utility.cpp
-//
-// Utility functions
-//
+/** 
+ *  @file utility.cpp
+ *  @brief Utility functions for time period representation
+ */
 #include "utility.h"
 #include <stdio.h>
 

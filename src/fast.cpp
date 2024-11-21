@@ -1,7 +1,6 @@
 /**
  * @file fast.cpp
- *
- * @brief Fast charging handler
+ * @brief Fast charging cycle handler for SLA batteries
  */
 #include "fast.h"
 

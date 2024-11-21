@@ -1,7 +1,6 @@
 /**
  * @file topping.cpp
- *
- * @brief Topping charging handler
+ * @brief Topping charging cycle handler for SLA batteries
  */
 #include "topping.h"
 

@@ -1,8 +1,13 @@
-/// @file regulator.cpp
-// Voltage regulator class
-//
+/**
+ *  @file regulator.cpp
+ *  @brief Adjustable voltage regulator class
+ */
 
 #include "regulator.h"
+#include "battery.h"
+
+// Global variables
+extern Battery battery;
 
 // Default constructor
 Vreg::Vreg(void) {
@@ -44,7 +49,6 @@ void Vreg::begin(PinNumber control_pin, INA219 *sensor, MCP4726 *dac) {
     }
 
     // Configure MCP4726 DAC
-    // 
     if (dac->connected()) {
         dac->begin(MCP4726_AWAKE | MCP4726_VREF_VDD | MCP4726_GAIN_1X);
         dac->set_level(4095);  // Minimum voltage level
@@ -86,11 +90,48 @@ void Vreg::set_voltage(voltage_mv_t voltage) {
 
 // Get output current
 current_ma_t Vreg::get_current_mA(void) {
-    current_ma_t load_current = sensor->get_current_mA();
-    if (load_current < 0)
+    if (sensor->get_bus_voltage_mV() > (battery.get_voltage_average_mV() + 250)) {
+        // Normal condition
+        return sensor->get_current_mA();
+    } else {
+        // If the regulator output voltage is not 300-400 mV or more above the
+        // battery voltage (i.e. the drop across the schottky diode), the 
+        // charging current will be zero.  Force that result to avoid returning
+        // spurious current readings caused by noise at the INA219 inputs.
         return 0;
-    else
-        return load_current;
+    }
+}
+
+/**
+ *  @brief Number of consecutive readings to calculate an average from
+ *  @note Should be a power of 2 to avoid binary division errors
+ */
+#define AVG_READINGS 4
+
+// Get average output current over AVG_READINGS
+current_ma_t Vreg::get_current_average_mA(void) {
+    uint32_t reading[AVG_READINGS];
+    uint32_t min = 0xFFFFFFFF;
+    uint32_t max = 0;
+    uint32_t sum = 0;
+
+    // Take consecutive voltage readings
+    for (int i=0; i < AVG_READINGS; i++) {
+        reading[i] = get_current_mA();
+        if (reading[i] < min) {
+            min = reading[i];
+        }
+        if (reading[i] > max) {
+            max = reading[i];
+        }
+        sum += reading[i];
+    }
+
+    // Debugging information
+    // Serial.printf("Charging mA: Avg %u, Min %u, Max %u\n", (sum/AVG_READINGS), min, max);
+
+    // Return calculated average
+    return (current_ma_t)(sum/AVG_READINGS);
 }
 
 // Turn voltage regulator on
@@ -117,33 +158,3 @@ uint16_t Vreg::calc_dac(voltage_mv_t voltage) {
     // Inverse linear relationship between voltage and DAC value
     return map(voltage, VREG_VOLTAGE_MIN, VREG_VOLTAGE_MAX, MCP4726_DAC_MAX, MCP4726_DAC_MIN);
 }
-
-// // Get DAC value to achieve a targeted voltage output by table interpolation
-// uint16_t Vreg::lookup_dac(uint16_t voltage) {
-//     uint16_t target_bottom = vout_targets[0];
-//     uint16_t target_top    = target_bottom;
-//     uint16_t dac_bottom    = dac_values[0];
-//     uint16_t dac_top       = dac_bottom;
-    
-//     // Check boundary condition
-//     if (voltage <= target_bottom)
-//         return dac_bottom;
-
-//     // Find closest voltage levels in table for interpolation
-//     for (uint i=0; i < sizeof(vout_targets)/sizeof(uint16_t); i++) {
-//         uint16_t target = vout_targets[i];
-//         uint16_t dacl   = dac_values[i];
-        
-//         if (voltage > target) {
-//             target_bottom = target;
-//             dac_bottom   = dacl;
-//         } else {
-//             target_top = target;
-//             dac_top   = dacl;
-//             break;
-//         }
-//     }
-
-//     // Use interpolation to find target resistance value
-//     return dac_bottom + ((voltage-target_bottom)*(dac_top - dac_bottom))/(target_top-target_bottom);
-// }

@@ -39,10 +39,14 @@ battery being charged:
 
 ### Implementation Notes
 
-Version number is encoded in the `obcharger.h` file, which defines the following
-macros with the version number information (e.g. VERSION_MAJOR.VERSION_MINOR):
-* VERSION_MAJOR - Major revision number
-* VERSION_MINOR - Minor revision number
+Software revision information is encoded in the `obcharger.h` file, which 
+defines the following macros:
+* OBC_VERSION - String with revision number (x.x)
+* OBC_RELDATE - String with release date (MM/DD/YYYY)
+
+The revision information should be updated for new releases, and will be
+displayed to the serial console at startup, along with release information
+for major libraries being used.
 
 Global variables are declared in the `main.cpp` file, including the instantations
 of classes that contain much of the functionality.
@@ -61,6 +65,17 @@ Global typedefs and constants are declared in the `obcharger.h` file.
       - Rough calibration of voltage readings completed, but have
         not confirmed current readings.
 
+* 0.2 11/21/2024
+      - Major update to base functionality.
+      - Significant improvement in stability of current and
+        voltage readings, using multi-read averaging and
+        a ring buffer cache to generate a long-term average
+        for the charging current reading (i.e. averaging
+        10 readings over each second between display updates).
+      - Optional OLED display support streamlined and 
+        enhanced using the `STM32_4kOLED` library rather
+        than Adafruit display libraries. This change provides
+        enhanced fonts and a much smaller memory footprint.
 
 
       

@@ -1,7 +1,9 @@
 /**
  * @file fast.h
  * 
- * @mainpage Fast charging handler
+ * @brief Fast charging cycle handler for SLA batteries
+ * 
+ * @details
  * Called by the exec supervisor to manage the fast charging cycle from
  * start to finish. The fast charging algorithm used to charge the battery
  * uses constant CURRENT_TARGET current level until VOLTS_TARGET battery
@@ -45,14 +47,36 @@
 #include <stm32_time.h>
 
 /**
- * @brief Fast charge cycle class
+ * @brief Fast charging cycle handler for SLA batteries
  * 
- * @details Derived from the Charge_Cycle base object, with the following
- * methods overriden to support application-specific functionality:
+ * @details Derived from the Charge_Cycle base object, with the run()
+ * methods overriden to support a fast charging algorithm for SLA
+ * (sealed lead-acid) batteries.
  * 
- * * run()
- * * status_message()
+ * The algorithm implemented by this handler seeks to charge the 
+ * battery to a target voltage specified by the user(typically around 14.4V)
+ * as quickly as possible.  Charging current will be targeted at or around
+ * a target current level specified by the user to the degree possible.
  * 
+ * The algorithm limits charging current to the maximum level specified
+ * by the user.  This limit will typically be driven by either (1) the maximum 
+ * safe charging current for the battery, or (2) the maximum current that
+ * can be provided by the voltage regulator.
+ * 
+ * To avoid over-stressing the battery and voltage regulator circuit,
+ * the cycle will start with the regulator voltage set to slightly below
+ * the current measured battery voltage. The charging voltage is ramped-up
+ * at a rate determined by the step voltage specified by the user to align
+ * the charging current between the target and maximum current levels.
+ * 
+ * These parameters are configurable and are set when the handler
+ * is initialized using the init() method.  See the documentation
+ * for the charge_parm_t structure for details on the configuration
+ * parameters for this handler (and others derived from the
+ * Charge_Cycle base class).
+ * 
+ * See the documentation for the Charge_Cycle base class for more
+ * general information on the charging cycle handle infrastructure.
  */
 class Fast_Charger : public Charge_Cycle {
 

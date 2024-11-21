@@ -1,9 +1,9 @@
 /**
  * @file cycle.h
+ * @brief Base class for creating custom battery charging cycles handlers
  * 
- * @mainpage Battery charging cycle base object
- * 
- * @brief Provides a framework for defining customized battery charging
+ * @details 
+ * Provides a framework for defining customized battery charging
  * cycles, providing a consistent base for code re-use.  This object
  * will be subclassed by the parent charging class, which will apply
  * it's unique algorithm to the run() method to perform the desired
@@ -45,8 +45,10 @@
 #include "utility.h"
 #include <stm32_time.h>
 
-/// @brief Charging parameters structure used to initialize Charge_Cycle objects
-///        and derived classes.
+/**
+ *  @brief Charging parameters structure used to initialize `Charge_Cycle` objects
+ *         and it's derived classes.
+ */
 struct charge_parm_t {
     current_ma_t current_target;            ///< Target charging current
     current_ma_t current_max;               ///< Maximum charging current
@@ -54,15 +56,12 @@ struct charge_parm_t {
     voltage_mv_t voltage_step;              ///< Step size for adjusting voltage
     time_ms_t charge_period_max;            ///< Maximum allowable charging time
     time_ms_t startup_period;               ///< Startup time period
-    time_ms_t idle_period;                  ///< Idle time between charges (storage only)
+    time_ms_t idle_period;                  ///< Idle time between charges (storage cycle only)
     time_ms_t led_on_period;                ///< Status LED on time while charging
     time_ms_t led_off_period;               ///< Status LED off time while charging
     rgb_t led_color;                        ///< Status LED color while charging
-    const char *title_str;                  ///< Charge cycle title for LCD display
-                                            ///< Should be six characters in length
-                                            ///< (e.g. 'FAST  ' for fast charge cycle)
-    const char *name_str;                   ///< Charge cycle name for serial output
-                                            ///< (e.g. 'fast' for fast charge cycle)
+    const char *title_str;                  ///< Charge cycle title (6 chars) for LCD display (e.g. "FAST  ")
+    const char *name_str;                   ///< Charge cycle name for serial output (e.g. 'fast')
 };
 
 /**
@@ -91,7 +90,7 @@ const charge_parm_t FAST_PARMS = {
     .led_off_period = 750,
     .led_color = LED_BLU_DRK,
     .title_str = "FAST  ",
-    .name_str = "fast",
+    .name_str = "Fast",
 };
 
 /**
@@ -112,7 +111,7 @@ const charge_parm_t TOP_PARMS = {
     .led_off_period = 1000,
     .led_color = LED_YLW_DRK,
     .title_str = "TOPPNG",
-    .name_str = "topping",
+    .name_str = "Topping",
 };
 
 /**
@@ -133,7 +132,7 @@ const charge_parm_t TRCKL_PARMS = {
     .led_off_period = 2750,
     .led_color = LED_GRN_DRK,
     .title_str = "TRCKLE",
-    .name_str = "trickle",
+    .name_str = "Trickle",
 };
 
 /**
@@ -153,6 +152,8 @@ const charge_parm_t STRG_PARMS = {
     .led_on_period = 100,
     .led_off_period = 1000,
     .led_color = LED_GRN_DRK,
+    .title_str = "STORAG",
+    .name_str = "Storage",
 };
 
 
@@ -160,89 +161,121 @@ const charge_parm_t STRG_PARMS = {
 /**
  * @brief Base class for deriving charge cycle handler classes
  * 
- * @details Provides a framework for deriving customized battery charging
- * cycles.  The derived classes should override the following methods with
- * application-specific versions:
+ * @details Provides a framework for creating customized battery charging
+ * handlers that provide a specific portion of the complete battery charging
+ * process (e.g. fast charging, trickle charging, etc.).
  * 
- * * run()
- * * status_message()
+ * The derived classes should override the run() method with an
+ * application-specific version to execute the desired charging
+ * algorithm.  The run() method will be called periodically by the user
+ * to allow it to monitor the charging process and make adjustments
+ * to tailor it to the battery state and desired outcome for the charging
+ * cycle.
  * 
+ * The destructor method may also be overridden if there is need
+ * to perform shutdown operations.
  */
 class Charge_Cycle {
 
 public:
-    /// @brief Default constructor
+    /**
+     *  @brief Default constructor
+     */
     Charge_Cycle();
 
-    /// @brief Constructor with initialization
-    /// @param Charging parameters structure
+    /**
+     *  @brief Constructor with initialization.
+     *  @param p: Parameters to configure the charging cycle.
+     */
     Charge_Cycle(charge_parm_t &p);
 
-    /// @brief Virtual destructor to support inheritance (best practice)
+    /** 
+     *  @brief Virtual destructor to support inheritance (best practice).
+     *  @note Virtual function that may be overridden by custom charging
+     *        cycle handlers derived from this class.
+     */
     virtual ~Charge_Cycle();
 
-    /// @brief Initialize charging cycle handler
-    /// @param Charging parameters structure
-    /// @note Using 'init' for the method name rather than 'begin' to avoid 
-    ///       potential confusion with the 'start' method used to start a new
-    ///       charging cycle.
+    /**
+     *  @brief Initialize charging cycle handler.
+     *  @param p: Charging parameters structure
+     *  @note Using `init` for the method name rather than `begin` to avoid 
+     *      potential confusion with the `start` method used to start a new
+     *       charging cycle.
+     */
     void init(const charge_parm_t &p);
 
-    /// @brief Start a new charge cycle
+    /**
+     *  @brief Start a new charge cycle.
+     *  @returns Nothing
+     */
     void start(void);
 
-    /// @brief Run-time handler called periodically to manage charging cycle
-    /// @returns Charging state
+    /**
+     *  @brief Run-time handler called periodically to manage charging cycle
+     *  @returns Charging state
+     *  @note Virtual function that will be overridden by custom charging
+     *        cycle handlers derived from this class.
+     */
     virtual cycle_state_t run(void);
  
-    /// @brief Stop current charging cycle
+    /**
+     *  @brief Stop the current charging cycle.
+     *  @returns Nothing
+     */
     void stop(void);
 
-    /// @brief Gets current charging state
-    /// @returns Charging state
+    /**
+     *  @brief Gets the current charging state.
+     *  @returns Charging state
+     */
     cycle_state_t state(void);
 
-    /// @brief Gets remaining startup time
-    /// @returns Remaining time (ms)
+    /**
+     *  @brief Gets remaining startup time in the current cycle.
+     *  @returns Remaining startup time (ms)
+     *  @note Startup time is allowed at the beginning of a charging
+     *        cycle to allow parameters to stabilize before deciding
+     *        if the target criteria for the cycle have been reached.
+     */
     time_ms_t startup_time_remaining(void);
 
-    /// @brief Gets remaining charging time
-    /// @returns Remaining charging time (ms)
+    /**
+     *  @brief Gets remaining charging time in the current charging cycle.
+     *  @returns Remaining charging time (ms)
+     */
     time_ms_t charging_time_remaining(void);
 
-    /// @brief Gets elapsed charging time
-    /// @returns Elapsed charging time (ms)
-    /// @note Includes startup time.
+    /** 
+     *  @brief Gets elapsed charging time in the current charging cycle.
+     *  @returns Elapsed charging time (ms)
+     *  @note The elapsed time will include any startup time specified
+     *        for the beginning of a charge cycle.
+     */
     time_ms_t charging_time_elapsed(void);
-
-    /// @brief Update RGB LED status
-    void status_led(void);
-
-    /// @brief Write status information to console and any attached displays
-    void status_message(void);
 
 protected:
     // Charging settings
-    voltage_mv_t target_voltage;            ///< Target voltage (mV)
-    voltage_mv_t step_voltage;              ///< Step voltage (mV)
-    current_ma_t target_current;            ///< Target current (mA)
-    current_ma_t max_current;               ///< Maximum current (mA)
+    voltage_mv_t target_voltage;            ///< Target battery voltage to be achieved (mV).
+    voltage_mv_t step_voltage;              ///< Step size used for adjusting regulator voltage (mV).
+    current_ma_t target_current;            ///< Target current to be used for charging battery (mA).
+    current_ma_t max_current;               ///< Maximum current to be used for charging battery (mA).
 
     // Time period settings
-    time_ms_t message_period=SECOND_MS;     ///< Message update time period (ms)
-    time_ms_t charge_period_max;            ///< Maximum charge time period (ms)
-    time_ms_t idle_period;                  ///< Idle time between charges for storage (ms)
-    time_ms_t startup_period;               ///< Startup time period (ms)
+    time_ms_t message_period=SECOND_MS;     ///< Status message update time period (ms).
+    time_ms_t charge_period_max;            ///< Maximum charge time period (ms).
+    time_ms_t idle_period;                  ///< Idle time between charges for the storage cycle (ms).
+    time_ms_t startup_period;               ///< Startup time period (ms) to allow parameters to stabilize.
 
     // LED settings
-    time_ms_t led_off_period;               ///< LED blink off time (ms)
-    time_ms_t led_on_period;                ///< LED blink on time (ms)
-    rgb_t led_color;                        ///< LED color
+    time_ms_t led_off_period;               ///< RGB LED blink off time (ms).
+    time_ms_t led_on_period;                ///< RGB LED blink on time (ms).
+    rgb_t led_color;                        ///< RGB LED color.
 
     // Variables
-    cycle_state_t state_code;               ///< Charging state
-    voltage_mv_t set_voltage;               ///< Voltage regulator set voltage (mV)
-    time_ms_t start_time;                   ///< millis() time for start of charging
+    cycle_state_t state_code;               ///< Current charging cycle state.
+    voltage_mv_t set_voltage;               ///< Current voltage regulator set voltage (mV).
+    time_ms_t start_time;                   ///< millis() time at the start of the charging cycle.
 
     // Software timers
     time_ms_t message_timer;                ///< Message update timer (uses message_period)
@@ -250,15 +283,31 @@ protected:
     bool led_state;                         ///< RGB LED state (true=on, false=off)
 
     // Hardware alarm timers
-    alarm_id_t charge_timer_id;             ///< Charging timer
+    alarm_id_t charge_timer_id;             ///< Hardware charging timer ID provided by the `Alarm_Pool`.
 
     // Status message buffers
-    char hms_str[9];                        ///< Buffer for 'HH:MM:SS' time string
-    char bv_str[5];                         ///< Buffer for 'XX.X' battery voltage string
+    char hms_str[9];                        ///< Buffer for 'HH:MM:SS' time string.
+    char bv_str[5];                         ///< Buffer for 'XX.X' battery voltage string.
+    char ov_str[5];                         ///< Buffer for 'XX.X' output voltage string
 
     // Status message strings
-    const char *title_str;                  ///< Charge cycle title for LCD display (6 characters)
-    const char *name_str;                   ///< Charge cycle name for serial console
+    const char *title_str;                  ///< Charge cycle title for LCD display messages (6 characters).
+    const char *name_str;                   ///< Charge cycle name for serial console messages.
+
+
+    /** 
+     *  @brief Update the status of the RGB LED, based on the color and
+     *         timing criteria specified for the current cycle.
+     *  @returns Nothing
+     */
+    void status_led(void);
+
+    /**
+     *  @brief Write status information for the current cycle to the serial
+     *         console and any attached displays.
+     *  @returns Nothing
+     */
+    void status_message(void);
 };
 
 #endif
