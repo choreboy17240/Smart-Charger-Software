@@ -42,20 +42,6 @@ public:
      */
     voltage_mv_t get_voltage_average_mV(void);
 
-    /**
-     *  @brief Get battery voltage (V)
-     *  @returns Voltage in Q16.16 fixed-point format
-     */
-    FXPTQ1616 get_voltage(void);
-
-    /**
-     *  @brief Get average battery voltage (V)
-     *  @returns Voltage in Q16.16 fixed-point format
-     */
-    FXPTQ1616 get_voltage_average(void);
-
-private:
-
 };
 
 #endif

@@ -48,14 +48,14 @@ public:
      * @brief Get output voltage level
      * @returns Voltage in millivolts
      */
-    voltage_mv_t get_voltage(void);
+    voltage_mv_t get_voltage_mV(void);
 
     /**
      * @brief Set output voltage level
      * @param voltage: Voltage in millivolts
      * @returns Nothing
      */
-    void set_voltage(voltage_mv_t voltage);
+    void set_voltage_mV(voltage_mv_t voltage);
 
     /**
      * @brief Get output current

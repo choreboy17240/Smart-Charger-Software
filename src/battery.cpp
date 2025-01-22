@@ -6,9 +6,12 @@
 #include "battery.h"
 
 /**
- *  Conversion from ADC counts to actual measured voltage at battery terminal
+ *  @brief Conversion from ADC counts to actual measured voltage at battery terminal
+ *  @details
  *  BATTERY_ADC_TO_MV = (AN_REF_VOLTAGE*(R_BATT_LO+R_BATT_HI)/(AN_READ_MAX*R_BATT_LO))
+ * 
  *  Results will be rounded-up, since integer division truncates the result down.
+ *  @note
  *  ADJUSTED VALUE TO CALIBRATE VOLTAGE READING WITH MEASUREMENT ACROSS
  *  BATTERY TERMINALS.
  */
@@ -52,16 +55,4 @@ voltage_mv_t Battery::get_voltage_average_mV(void) {
 
     // Return calculated average
     return (voltage_mv_t)(sum/AVG_READINGS);
-}
-
-// Get battery voltage in Q16.16 fixed-point format
-FXPTQ1616 Battery::get_voltage(void) {
-    uint32_t voltage_mv = get_voltage_mV();
-    return FXPTQ1616(voltage_mv);
-}
-
-// Get average battery voltage in Q16.16 fixed-point format
-FXPTQ1616 Battery::get_voltage_average(void) {
-    voltage_mv_t voltage_mv = get_voltage_average_mV();
-    return FXPTQ1616(voltage_mv);
 }

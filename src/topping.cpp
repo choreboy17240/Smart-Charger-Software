@@ -56,16 +56,16 @@ cycle_state_t Topping_Charger::run() {
     if (charging_current > max_current) {
         // Avoid excess current
         set_voltage -= step_voltage;
-        vreg.set_voltage(set_voltage);
+        vreg.set_voltage_mV(set_voltage);
     } else {
         // Normal regulation to keep voltage stable
         if (battery_voltage > target_voltage + VOLTS_HYSTERESIS) {
             set_voltage -= step_voltage;
-            vreg.set_voltage(set_voltage);
+            vreg.set_voltage_mV(set_voltage);
         } else {
             if (battery_voltage < target_voltage - VOLTS_HYSTERESIS) {
                 set_voltage += step_voltage;
-                vreg.set_voltage(set_voltage);
+                vreg.set_voltage_mV(set_voltage);
             }
         }
     }

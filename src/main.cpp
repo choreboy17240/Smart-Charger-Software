@@ -13,6 +13,7 @@
 #include "fast.h"
 #include "topping.h"
 #include "trickle.h"
+#include "standby.h"
 
 // Libraries
 #include <i2c_busio.h>
@@ -28,6 +29,8 @@
 /// I2C address for 128x64 display
 #define ADDRESS_128x64  0x3D    
 
+// Utility function from cycle module
+extern void milliunits_to_string(uint32_t milliunits, uint8_t places, char *buffer, uint8_t buffer_len);
 
 //=============================================================================
 // Global variables
@@ -58,6 +61,8 @@ Fast_Charger fast_charger;
 Topping_Charger topping_charger;
 /// Trickle charging cycle handler, derived from the `Charge_Cycle` class
 Trickle_Charger trickle_charger;
+/// Standby mode handler, derived from the `Charge_Cycle` class
+Standby_Charger standby_charger;
 
 /// I2C bus object
 I2C main_i2c_bus = I2C(&Wire, I2C0_SCL_GPIO, I2C0_SDA_GPIO, I2C0_BAUDRATE);
@@ -81,13 +86,16 @@ RGB_LED rgb_led;
 bool oled_found = false;   
 
 // SSD1306 display object
-SSD1306PrintDevice oled(&tiny4koled_begin_wire, &tiny4koled_beginTransmission_wire, &datacute_write_wire, &datacute_endTransmission_wire);
+// SSD1306PrintDevice oled(&tiny4koled_begin_wire, &tiny4koled_beginTransmission_wire, &datacute_write_wire, &datacute_endTransmission_wire);
+SSD1306PrintDevice oled;
 
-// Ring buffer for current readings
-RingBuffer16 rb_charging_current(10);
-
-/// General ASCIIZ string message buffer
-char buffer[81];
+/**
+ * @brief Ring buffer for current readings
+ * @details
+ * This buffer stores historical current readings to allow calculating a
+ * running average to reduce volatility of the charging current value.
+ */
+RingBuffer16 rb_charging_current(RB_CHARGING_CURRENT_SAMPLES);
 
 //=============================================================================
 // Utility functions
@@ -99,7 +107,7 @@ char buffer[81];
  *  @note Active I2C addresses found during the I2C bus scan will be set to a
  *        `true` value.  Inactive I2C addresses will be set to a `false` value.
  */
-void i2c_map(bool *addresses_found) {
+void display_i2c_map(bool *addresses_found) {
     Serial.printf("    0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F\n");
  
     for (int addr = 0; addr < 128; ++addr) {
@@ -124,19 +132,29 @@ void display_library_versions(void) {
     char version[6];  // Version string (xx.x) with \0
     char reldate[12]; // Release date string (MM/DD/YYYY) with \0
 
+    // Hardware timer library
+    timer_pool.version(version, sizeof(version));
+    timer_pool.reldate(reldate, sizeof(reldate));
+    Serial.printf("STM32 Hardware Timer library v%s (%s)\n", version, reldate);
+
+    // I2C Bus I/O library
+    main_i2c_bus.version(version, sizeof(version));
+    main_i2c_bus.reldate(reldate, sizeof(reldate));
+    Serial.printf("I2C Bus I/O library v%s (%s)\n", version, reldate);
+
     // INA219 sensor library
-    sensor.version(version, sizeof(version)/sizeof(char));
-    sensor.reldate(reldate, sizeof(reldate)/sizeof(char));
+    sensor.version(version, sizeof(version));
+    sensor.reldate(reldate, sizeof(reldate));
     Serial.printf("INA219 current/power sensor library v%s (%s)\n", version, reldate);
 
     // MCP4726 DAC library
-    dac.version(version, sizeof(version)/sizeof(char));
-    dac.reldate(reldate, sizeof(reldate)/sizeof(char));
+    dac.version(version, sizeof(version));
+    dac.reldate(reldate, sizeof(reldate));
     Serial.printf("MCP4726 DAC library v%s (%s)\n", version, reldate);
 
     // Ring buffer library
-    rb_charging_current.version(version, sizeof(version)/sizeof(char));
-    rb_charging_current.reldate(reldate, sizeof(reldate)/sizeof(char));
+    rb_charging_current.version(version, sizeof(version));
+    rb_charging_current.reldate(reldate, sizeof(reldate));
     Serial.printf("Ring buffer library v%s (%s)\n", version, reldate);
 }
 
@@ -177,7 +195,7 @@ void setup() {
     Serial.printf("Found %u devices on Wire I2C bus \n", number_found);
     Serial.printf("\n");
     Serial.printf("Results of the I2C scan:\n");
-    i2c_map(addresses_found);
+    display_i2c_map(addresses_found);
     Serial.printf("\n");
 
     // Check if the optional OLED I2C display is installed
@@ -190,7 +208,7 @@ void setup() {
         Serial.printf("Initializing OLED display ");
         oled.begin();
         oled.setRotation(1);
-        oled.setInternalIref(true);    // Lower brightness
+        oled.setInternalIref(true);     // Lower brightness
         oled.setContrast(40);           // Approx 16% brightness
         oled.setFont(FONT8X16P);        // 8x16 proportional font
         oled.clear();
@@ -231,8 +249,6 @@ void setup() {
     trickle_charger.init(TRCKL_PARMS);
     Serial.printf("- Done\n");
     Serial.printf("\n");
-
-    // FIXME: ADD SUPPORT FOR STORAGE CHARGING CYCLE
     
     // Initial state of charger
     charger_state = CHARGER_STARTUP;
@@ -274,8 +290,8 @@ void loop() {
                     charger_state = CHARGER_TOPPING;
                     topping_charger.start();
                 }
-            }
                 break;
+            }
 
             case CHARGER_FAST: {
                 // Fast-charging is in process
@@ -304,8 +320,8 @@ void loop() {
                         Serial.printf("Fast charging cycle returned unknown status!\n");
                         charger_state = CHARGER_SHUTDOWN;
                 } // switch(fast)
-            }
                 break;
+            }
 
             case CHARGER_TOPPING: {
                 // Topping charging is in process
@@ -334,8 +350,8 @@ void loop() {
                         Serial.printf("Topping charging cycle returned unknown status!\n");
                         charger_state = CHARGER_SHUTDOWN;
                 } // switch(topping)
-            }
                 break;
+            }
 
             case CHARGER_TRICKLE: {
                 // Trickle charge is in process
@@ -362,8 +378,38 @@ void loop() {
                         Serial.printf("Trickle charging cycle returned unknown status!\n");
                         charger_state = CHARGER_SHUTDOWN;
                 } // switch(trickle)
-            }
                 break;
+            }
+
+            case CHARGER_STANDBY: {
+                // Currently in standby mode
+                switch (standby_charger.run()) {
+                    case CYCLE_RUNNING:
+                        break;
+                    case CYCLE_TIMEOUT: {
+                        // Standby mode over, time to restart active charging
+                        // Check current battery voltage to determine the appropriate
+                        // charging cycle. Fast if discharged heavily, trickle otherwise.
+                        voltage_mv_t battery_voltage = battery.get_voltage_average_mV();
+                        char bv_str[6];  // Temporary buffer for battery voltage
+                        milliunits_to_string(battery_voltage, 1, bv_str, sizeof(bv_str));
+                        if (battery_voltage <= BATTERY_DISCHARGED_MV) {
+                            Serial.printf("Battery voltage @ %s volts, starting fast charge\n", bv_str);
+                            charger_state = CHARGER_FAST;
+                            fast_charger.start();
+                        } else {
+                            Serial.printf("Battery voltage @ %s volts, starting trickle charge\n", bv_str);
+                            charger_state = CHARGER_TRICKLE;
+                            trickle_charger.start();
+                        };
+                        break;
+                    }
+                    default:
+                        Serial.printf("Standby mode handler returned unknown status!\n");
+                        charger_state = CHARGER_SHUTDOWN;
+                } // switch(standby)
+                break;
+            }
 
             case CHARGER_SHUTDOWN:
                 break;

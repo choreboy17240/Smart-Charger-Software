@@ -60,7 +60,7 @@ void Vreg::begin(PinNumber control_pin, INA219 *sensor, MCP4726 *dac) {
 }
 
 // Get output voltage level
-voltage_mv_t Vreg::get_voltage(void) {
+voltage_mv_t Vreg::get_voltage_mV(void) {
     // Output voltage is only meaningful if the voltage regulator is on.
     // Returns 0 to avoid reading bogus voltage levels.
     if (is_on())
@@ -70,7 +70,7 @@ voltage_mv_t Vreg::get_voltage(void) {
 }
 
 // Set output voltage level
-void Vreg::set_voltage(voltage_mv_t voltage) {
+void Vreg::set_voltage_mV(voltage_mv_t voltage) {
     voltage_mv_t sv;
 
     // Apply voltage limits to requested voltage

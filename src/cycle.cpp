@@ -6,22 +6,17 @@
 #include "obcharger.h"
 #include "cycle.h"
 
-// OLED display support
-#include <STM32_4kOLED.h>
-
-// Ring buffer
-#include <ringbuffer.h>
-
 //
 // Global variables
 //
+extern charger_state_t charger_state;       ///< Global charging state from main.cpp
 extern Alarm_Pool timer_pool;               ///< Hardware timers
 extern Vreg vreg;                           ///< Voltage regulator
 extern Battery battery;                     ///< Battery
 extern RGB_LED rgb_led;                     ///< RGB status LED
 extern bool oled_found;                     ///< OLED display found at startup in main()?
 extern SSD1306PrintDevice oled;             ///< OLED display object
-extern RingBuffer16 rb_charging_current;      ///< Charging current readings
+extern RingBuffer16 rb_charging_current;    ///< Charging current readings
 
 // Default constructor
 Charge_Cycle::Charge_Cycle() {
@@ -61,6 +56,9 @@ void Charge_Cycle::init(const charge_parm_t &p) {
     // Save status message strings
     title_str = p.title_str;
     name_str = p.name_str;
+
+    // Set the message update period
+    message_period = p.message_period;
 }
 
 // Destructor (best practice)
@@ -85,7 +83,7 @@ void Charge_Cycle::start() {
         // Start just below battery voltage
         set_voltage = battery_voltage - 100;
     }
-    vreg.set_voltage(set_voltage);
+    vreg.set_voltage_mV(set_voltage);
     vreg.on();
 
     // Start the hardware alarm timers
@@ -104,8 +102,13 @@ void Charge_Cycle::start() {
     led_timer = start_time;
 
     // Display startup message and field names to serial console only
-    Serial.printf("Starting %s charging cycle\n\n", name_str);
-    Serial.printf("Cycle, Time, \"Bus Voltage\", \"Battery Voltage\", \"Charging Current\"\n");
+    if (charger_state != CHARGER_STANDBY) {
+        Serial.printf("Starting %s charging cycle\n\n", name_str);
+        Serial.printf("Cycle, Time, \"Bus Voltage\", \"Battery Voltage\", \"Charging Current\"\n");
+    } else {
+        Serial.printf("Entering standby mode\n");
+        Serial.printf("Cycle, Time, \"Battery Voltage\"\n");
+    }
 
     // Clear OLED display to prepare for new charging cycle messages
     if (oled_found) {
@@ -179,6 +182,47 @@ void Charge_Cycle::status_led() {
     }
 }
 
+// Calculate powers of 10 using integer math
+uint32_t pow10(uint8_t exponent) {
+    // Limit the maximum exponent to prevent overflow
+    if (exponent > 9) {
+        return 1000000000; // 10^9 is the largest value for 32-bit unsigned integers
+    }
+
+    uint32_t result = 1;
+    for (uint8_t i = 0; i < exponent; i++) {
+        result *= 10;
+    }
+    return result;
+}
+
+// Utility: Convert value in milliunits to a rounded decimal string
+void milliunits_to_string(uint32_t milliunits, uint8_t places, char *buffer, uint8_t buffer_len) {
+    // Ensure places is reasonable value for milliunits
+    if (places > 3) {
+        places= 3;
+    }
+
+    // Calculate whole integer part of the decimal value
+    uint32_t whole = milliunits/ 1000;
+
+    // Calculate fractional part as tenths, hundredths, etc.
+    uint32_t fractional = milliunits % 1000;
+
+    // Round the fractional part to the desired number of decimal places
+    uint32_t roundingFactor = pow10(3 - places);
+    fractional = (fractional + roundingFactor / 2) / roundingFactor;
+
+    // If rounding caused overflow, adjust the integer part
+    if (fractional >= pow10(places)) {
+        fractional = 0;
+        whole++;
+    }
+
+    // Format the result as a string and store it in the buffer
+    snprintf(buffer, buffer_len, "%d.%0*d", whole, places, fractional);
+}
+
 // Write status information to serial console and any attached displays
 //
 // Console message format:
@@ -200,20 +244,18 @@ void Charge_Cycle::status_message() {
         // current_ma_t charging_current = vreg.get_current_mA();
         // current_ma_t charging_current = vreg.get_current_average_mA();
         current_ma_t charging_current = (uint32_t)(rb_charging_current.average());
-
-        // FXPTQ1616 battery_voltage = battery.get_voltage();
-        FXPTQ1616 battery_voltage = battery.get_voltage_average();
-        FXPTQ1616 bus_voltage = FXPTQ1616(vreg.get_voltage());
+        voltage_mv_t battery_voltage_mV = battery.get_voltage_average_mV();
+        voltage_mv_t bus_voltage_mV = vreg.get_voltage_mV();
         
         // Create elapsed time string (HH:MM:SS) in hms_str buffer
         // ms_to_hms_str(millis()-start_time, hms_str);
         ms_to_hms_str(charging_time_elapsed(), hms_str);
 
         // Create battery voltage string (xx.x) in bv_str buffer
-        battery_voltage.to_string(bv_str, sizeof(bv_str), "%2.1f");
+        milliunits_to_string(battery_voltage_mV, 1, bv_str, sizeof(bv_str));
 
         // Create output voltage string (xx.x) in ov_str butter
-        bus_voltage.to_string(ov_str, sizeof(ov_str), "%2.1f");
+        milliunits_to_string(bus_voltage_mV, 1, ov_str, sizeof(ov_str));
 
         // Write message to OLED display if present
         // Assumes display is configured for the default 8x16 proportional font

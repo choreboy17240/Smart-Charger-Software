@@ -49,7 +49,7 @@ cycle_state_t Fast_Charger::run() {
         Serial.printf("Error: Set voltage level at %u millivolts\n", set_voltage);
         set_voltage = VREG_VOLTAGE_MAX;
         Serial.printf("Cutting set voltage back to %u millivolts now!\n", set_voltage);
-        vreg.set_voltage(set_voltage);
+        vreg.set_voltage_mV(set_voltage);
     }
 
     // Fast charging cycle is complete if:
@@ -91,7 +91,7 @@ cycle_state_t Fast_Charger::run() {
     }
 
     // Set the regulator voltage
-    vreg.set_voltage(set_voltage);
+    vreg.set_voltage_mV(set_voltage);
 
     // Update RGB LED status as needed
     status_led();

@@ -45,6 +45,12 @@
 #include "utility.h"
 #include <stm32_time.h>
 
+// OLED display support
+#include <STM32_4kOLED.h>
+
+// Ring buffer
+#include <ringbuffer.h>
+
 /**
  *  @brief Charging parameters structure used to initialize `Charge_Cycle` objects
  *         and it's derived classes.
@@ -56,12 +62,13 @@ struct charge_parm_t {
     voltage_mv_t voltage_step;              ///< Step size for adjusting voltage
     time_ms_t charge_period_max;            ///< Maximum allowable charging time
     time_ms_t startup_period;               ///< Startup time period
-    time_ms_t idle_period;                  ///< Idle time between charges (storage cycle only)
+    time_ms_t idle_period;                  ///< Idle time between charges (standby mode only)
     time_ms_t led_on_period;                ///< Status LED on time while charging
     time_ms_t led_off_period;               ///< Status LED off time while charging
     rgb_t led_color;                        ///< Status LED color while charging
     const char *title_str;                  ///< Charge cycle title (6 chars) for LCD display (e.g. "FAST  ")
     const char *name_str;                   ///< Charge cycle name for serial output (e.g. 'fast')
+    time_ms_t message_period;               ///< Time between console and OLED message updates
 };
 
 /**
@@ -73,8 +80,8 @@ struct charge_parm_t {
  * the target charging current at 17% of battery capacity and maximum charging
  * current at 20% of battery capacity.
  * 
- * Fast charging is limited to a maximum of FAST_TIMEOUT_MS to protect against
- * bad battery that won't take a charge.  The FAST_STARTUP_MS time provides
+ * Fast charging is limited to a maximum of `FAST_TIMEOUT_MS` to protect against
+ * bad battery that won't take a charge.  The `FAST_STARTUP_MS` time provides
  * a delay to allow any surface charge voltage to dissipate before making
  * the decision to end fast charging.
  */
@@ -91,20 +98,23 @@ const charge_parm_t FAST_PARMS = {
     .led_color = LED_BLU_DRK,
     .title_str = "FAST  ",
     .name_str = "Fast",
+    .message_period = 1000,
 };
 
 /**
  * @brief Topping charge parameters
  * 
- * @details Constant voltage charge until current drops below 5% of battery capacity
- *          Recommended range of 2.30V to 2.35V/cell for maximum service life.
+ * @details
+ * Sets the voltage regulator to a constant voltage and maintains it until the
+ * charging current drops below 5% of battery capacity.  The recommended voltage
+ * range is 2.30V to 2.35V/cell for maximum service life.
  */
 const charge_parm_t TOP_PARMS = { 
     .current_target = BATTERY_CAPACITY/20,  // @5% capacity
     .current_max = 1000,                    // 1 amp limit for power supply
     .voltage_target = 14000,                // 14.0V => 2.33V/cell
     .voltage_step = 10,
-    .charge_period_max = 12*HOUR_MS,
+    .charge_period_max = 8*HOUR_MS,
     .startup_period = 120*SECOND_MS,
     .idle_period = 0,                       // Ignored for topping charging
     .led_on_period = 250,
@@ -112,20 +122,23 @@ const charge_parm_t TOP_PARMS = {
     .led_color = LED_YLW_DRK,
     .title_str = "TOPPNG",
     .name_str = "Topping",
+    .message_period = 1000,
 };
 
 /**
  * @brief Trickle or float charge parameters
  * 
- * @details Constant voltage to maintain state of charge
- *          Recommended range of 2.25V to 2.27V/cell at 25 degrees C.
+ * @details
+ * Set the voltage regulator to a constant voltage to maintain the battery's
+ * state of charge.  The recommended voltage range is 2.25V to 2.27V/cell at 25 
+ * degrees C.
  */
 const charge_parm_t TRCKL_PARMS = { 
     .current_target = 0,                    // Not applicable for trickle charging
     .current_max = 1000,                    // 1 amp limit for power supply
     .voltage_target = 13500,
     .voltage_step = 10,
-    .charge_period_max = 24*HOUR_MS,
+    .charge_period_max = 8*HOUR_MS,
     .startup_period = 60*SECOND_MS,         // Ignored for trickle charging
     .idle_period = 0,                       // Ignored for trickle charging
     .led_on_period = 250,
@@ -133,29 +146,31 @@ const charge_parm_t TRCKL_PARMS = {
     .led_color = LED_GRN_DRK,
     .title_str = "TRCKLE",
     .name_str = "Trickle",
+    .message_period = 10000,
 };
 
 /**
- * @brief Storage charge parameters
+ * @brief Standby mode parameters
  * 
- * @details Run weekly to maintain state of charge
- *          Constant voltage to maintain state of charge but avoid long-term damage
+ * @details
+ * The voltage regulator is turned-off and we're waiting until the end of the
+ * standby cycle to resume active charging.
  */
-const charge_parm_t STRG_PARMS = { 
-    .current_target = 0,                    // Not applicable for storage charging
-    .current_max = 1000,                    // 1 amp limit for power supply
-    .voltage_target = 13500,
-    .voltage_step = 100,
-    .charge_period_max = 24*HOUR_MS,
-    .startup_period = 60*SECOND_MS,           // Ignored for storage charging
-    .idle_period = 6*DAY_MS,                  // Weekly
-    .led_on_period = 100,
-    .led_off_period = 1000,
+const charge_parm_t STANDBY_PARMS = { 
+    .current_target = 0,                        // Regulator turned-off
+    .current_max = 0,
+    .voltage_target = 0,                        
+    .voltage_step = 0,
+    .charge_period_max = 0,                     // Ignored
+    .startup_period = 0,                        // Ignored
+    .idle_period = DAY_MS,                      // FIXME: Daily for debugging, should be weekly
+    .led_on_period = 500,                       // Short green pulse every minute
+    .led_off_period = 59500,
     .led_color = LED_GRN_DRK,
-    .title_str = "STORAG",
-    .name_str = "Storage",
+    .title_str = "STNDBY",
+    .name_str = "Standby",
+    .message_period = 60000,
 };
-
 
 
 /**
@@ -262,7 +277,7 @@ protected:
     current_ma_t max_current;               ///< Maximum current to be used for charging battery (mA).
 
     // Time period settings
-    time_ms_t message_period=SECOND_MS;     ///< Status message update time period (ms).
+    time_ms_t message_period;               ///< Status message update time period (ms).
     time_ms_t charge_period_max;            ///< Maximum charge time period (ms).
     time_ms_t idle_period;                  ///< Idle time between charges for the storage cycle (ms).
     time_ms_t startup_period;               ///< Startup time period (ms) to allow parameters to stabilize.
@@ -287,13 +302,12 @@ protected:
 
     // Status message buffers
     char hms_str[9];                        ///< Buffer for 'HH:MM:SS' time string.
-    char bv_str[5];                         ///< Buffer for 'XX.X' battery voltage string.
-    char ov_str[5];                         ///< Buffer for 'XX.X' output voltage string
+    char bv_str[6];                         ///< Buffer for 'XX.X' battery voltage string.
+    char ov_str[6];                         ///< Buffer for 'XX.X' output voltage string
 
     // Status message strings
     const char *title_str;                  ///< Charge cycle title for LCD display messages (6 characters).
     const char *name_str;                   ///< Charge cycle name for serial console messages.
-
 
     /** 
      *  @brief Update the status of the RGB LED, based on the color and
@@ -307,7 +321,36 @@ protected:
      *         console and any attached displays.
      *  @returns Nothing
      */
-    void status_message(void);
+    virtual void status_message(void);
 };
+
+/**
+ * @brief Utility function to calculate powers of 10 using integer math
+ * @param exponent Non-negative exponent (e.g., 0 for 10^0, 1 for 10^1, etc.).
+ * @return Result of 10^exponent as an unsigned integer.
+ * @note
+ * Using the pow() function in the standard library uses about 18-20K
+ * additional flash memory and also increased RAM usage. This simple utility
+ * function avoids that overhead.
+ */
+uint32_t pow10(uint8_t exponent);
+
+/**
+ * @brief Utility function to convert value in milliunits to a rounded decimal string
+ * @param milliunits: Value in milliunits (e.g. 12435 mV for 12.435V)
+ * @param places: Number of decimal places in the result
+ * @param buffer: Buffer to hold the string representation
+ * @param buffer_len: Length of the buffer for holding string representation
+ * @returns String with rounded decimal representation
+ * @note
+ * Using the sprintf() functions in the standard library adds signifcant
+ * overhead for the floating point library. This simple utility function
+ * formats the battery voltage, etc. in decimal units (e.g. 13.1) in string
+ * form for display to the console and OLED.  The decimal string will be 
+ * rounded-off appropriately to the number of places specified by `places`.
+ * This function relies on the `pow10()` function for formatting the 
+ * decimal strings.
+ */
+void milliunits_to_string(uint32_t milliunits, uint8_t places, char *buffer, uint8_t buffer_len);
 
 #endif

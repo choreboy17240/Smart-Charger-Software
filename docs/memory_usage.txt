@@ -1,0 +1,32 @@
+
+
+
+Baseline, using the fxpt_math library and fixed-point representations:
+
+Advanced Memory Usage is available via "PlatformIO Home > Project Inspect"
+RAM:   [===       ]  31.2% (used 2552 bytes from 8192 bytes)
+Flash: [=======   ]  72.8% (used 47720 bytes from 65536 bytes)
+Building .pio/build/genericSTM32G030K8T6/firmware.bin
+
+With utility function convert milliunits to decimal string:
+
+Advanced Memory Usage is available via "PlatformIO Home > Project Inspect"
+RAM:   [===       ]  31.2% (used 2552 bytes from 8192 bytes)
+Flash: [=======   ]  73.4% (used 48112 bytes from 65536 bytes)
+Building .pio/build/genericSTM32G030K8T6/firmware.bin
+
+After removing the fxpt_math library and fixed-point references in the code,
+using String objects for buffers and returning value from milliunits_to_string()
+
+Advanced Memory Usage is available via "PlatformIO Home > Project Inspect"
+RAM:   [===       ]  31.7% (used 2600 bytes from 8192 bytes)
+Flash: [=======   ]  71.9% (used 47128 bytes from 65536 bytes)
+Building .pio/build/genericSTM32G030K8T6/firmware.bin
+
+Revised milliunits_to_string() to use old-school fixed-size character buffers
+rather than String objects:
+
+Advanced Memory Usage is available via "PlatformIO Home > Project Inspect"
+RAM:   [===       ]  31.3% (used 2564 bytes from 8192 bytes)
+Flash: [=======   ]  71.2% (used 46636 bytes from 65536 bytes)
+Building .pio/build/genericSTM32G030K8T6/firmware.bin

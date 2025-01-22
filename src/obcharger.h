@@ -8,9 +8,6 @@
 #include <Arduino.h>
 #include <Wire.h>
 
-// Include fixed-point math support
-#include <fxpt_math.h>
-
 //
 // Debug and verbose modes
 //
@@ -20,8 +17,8 @@ const bool VERBOSE_MODE = true;                 ///< Enable verbose mode (true o
 //
 // Software version information (update with new releases)
 //
-#define OBC_VERSION     "0.2"                   ///< Software revision number (x.x)
-#define OBC_RELDATE     "11/21/2024"            ///< Software release date (MM/DD/YYYY)
+#define OBC_VERSION     "0.3"                   ///< Software revision number (x.x)
+#define OBC_RELDATE     "01/21/2025"            ///< Software release date (MM/DD/YYYY)
 
 //
 // Application-specific type definitions
@@ -30,10 +27,8 @@ typedef uint32_t    PinNumber;                  ///< GPIO pin number (Arduino Pi
 
 typedef uint32_t    time_ms_t;                  ///< Time in milliseconds
 
-typedef FXPTQ1616   voltage_fxp_t;              ///< Voltage in fixed-point format (Volts)
 typedef uint32_t    voltage_mv_t;               ///< Voltage in integer format (mV)
 typedef uint32_t    voltage_uv_t;               ///< Voltage in integer format (uV)
-typedef FXPTQ1616   current_fxp_t;              ///< Current in fixed-point format (Amps)
 typedef uint32_t    current_ma_t;               ///< Current in integer format (mA)
 
 //
@@ -59,7 +54,7 @@ enum charger_state_t {
     CHARGER_FAST = 3,                       ///< Fast charge
     CHARGER_TOPPING = 4,                    ///< Topping charge
     CHARGER_TRICKLE = 5,                    ///< Trickle charge
-    CHARGER_STORAGE = 6,                    ///< Storage charge
+    CHARGER_STANDBY = 6,                    ///< Standby mode
     CHARGER_SHUTDOWN = 7,                   ///< Shutdown (error condition?)
     CHARGER_LOAD_TEST = 8,                  ///< Battery load test (not implemented)
     CHARGER_CONDITION = 9                   ///< Battery conditioning (not implemented)
@@ -161,6 +156,8 @@ const uint16_t BATTERY_CAPACITY = 5500;     ///< Battery capacity in mA/hours.
 const voltage_mv_t VREG_VOLTAGE_MIN = 5000;  ///< Voltage regulator minimum allowable voltage (mV).
 const voltage_mv_t VREG_VOLTAGE_MAX = 16000; ///< Voltage regulator maximum allowable voltage (mV).
 
+#define RB_CHARGING_CURRENT_SAMPLES     10  ///< Charging current samples to keep in ring buffer
+
 /** 
  *  @brief Threshold voltage (mV) used to determine initial charge state.  Charger will
  *  jump to fast charging if below the threshold, or topping charging if at or above
@@ -174,6 +171,5 @@ const voltage_mv_t BATTERY_DISCHARGED_MV = 13000;
  *  and smooth out voltage adjustments.
  */
 const voltage_mv_t VOLTS_HYSTERESIS = 100;
-
 
 #endif
