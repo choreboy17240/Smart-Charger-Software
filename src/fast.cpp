@@ -35,7 +35,6 @@ cycle_state_t Fast_Charger::run() {
     if (!charging_time_remaining()) {
         // Yes, terminate charging cycle
         stop();
-        Serial.printf("Fast charge cycle timed out!\n");
         state_code = CYCLE_TIMEOUT;
         return state_code;
     }

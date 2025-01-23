@@ -176,6 +176,16 @@ using the `AVG_READINGS` constant in the `battery.cpp` file.
         needed for trickle charge and standby modes.  Added a `message_period`
         value to the `charge_parm_t` structure to specify the period.
 
-      
+* 0.4 01/23/2025
+      - Fixed logic in the `loop()` function to correctly manage the successful
+        completion of the trickle charging cycle and transition to the standby
+        mode.
+      - Minor updates to correct some incorrect comments and superfluous
+        timeout status messages in the cycle handlers.
+      - Temporarily set cycle times for both trickle and standby cycles to 
+        four hours to help speed-up validation testing.  These will need to be
+        set to "normal" durations for the official release.
+
+
 
       

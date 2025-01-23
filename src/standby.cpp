@@ -39,7 +39,6 @@ cycle_state_t Standby_Charger::run() {
     if (!charging_time_remaining()) {
         // Yes, terminate charging cycle
         stop();
-        Serial.printf("Standby cycle timed out!\n");
         state_code = CYCLE_TIMEOUT;
         return state_code;
     }

@@ -330,7 +330,7 @@ void loop() {
                     case CYCLE_RUNNING:
                         break;
                     case CYCLE_DONE:
-                        // Charge done, move to topping charge
+                        // Charge done, move to trickle charge
                         Serial.printf("Topping charging cycle completed!\n");
                         Serial.printf("Initiating trickle charge cycle\n");
                         charger_state = CHARGER_TRICKLE;
@@ -360,14 +360,10 @@ void loop() {
                     case CYCLE_RUNNING:
                         break;
                     case CYCLE_DONE:
-                        // Charge done, move to topping charge
-                        Serial.printf("Trickle charging cycle completed!\n");
-                        charger_state = CHARGER_TRICKLE;
-                        break;
                     case CYCLE_TIMEOUT:
-                        // Charge timed-out, something's not right
-                        Serial.printf("Trickle charging cycle timed-out!\n");
-                        charger_state = CHARGER_SHUTDOWN;
+                        // Charge done, move to standby mode
+                        Serial.printf("Trickle charging cycle completed!\n");
+                        charger_state = CHARGER_STANDBY;
                         break;
                     case CYCLE_ERROR:
                         // Hardware error detected
@@ -386,8 +382,10 @@ void loop() {
                 switch (standby_charger.run()) {
                     case CYCLE_RUNNING:
                         break;
+                    case CYCLE_DONE:
                     case CYCLE_TIMEOUT: {
                         // Standby mode over, time to restart active charging
+                        Serial.printf("Exiting standby mode\n");
                         // Check current battery voltage to determine the appropriate
                         // charging cycle. Fast if discharged heavily, trickle otherwise.
                         voltage_mv_t battery_voltage = battery.get_voltage_average_mV();

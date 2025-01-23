@@ -65,15 +65,18 @@
  * at a rate determined by the step voltage specified by the user to align
  * the charging current between the target and maximum current levels.
  * 
- * These parameters are configurable and are set when the handler
- * is initialized using the init() method.  See the documentation
- * for the charge_parm_t structure for details on the configuration
- * parameters for this handler (and others derived from the
- * Charge_Cycle base class).
+ * These parameters are configurable and are set when the handler is 
+ * initialized using the init() method.  See the documentation for the 
+ * `charge_parm_t` structure for details on the configuration parameters for
+ * this handler (and others derived from the `Charge_Cycle` base class).
  * 
- * See the documentation for the Charge_Cycle base class for more
+ * As noted below, there is no charging "goal" when trickle charging the
+ * battery. The normal exit will occur in the form of a "timeout" condition
+ * (i.e. returning `CYCLE_TIMEOUT` state) rather than a "completed" condition
+ * (i.e. returning `CYCLE_DONE` state).
+ * 
+ * See the documentation for the `Charge_Cycle` base class for more
  * general information on the charging cycle handle infrastructure.
- * 
  */
 class Trickle_Charger : public Charge_Cycle {
 
@@ -82,15 +85,24 @@ public:
     /// @brief Default constructor
     Trickle_Charger();
 
-    /// @brief Constructor with initialization
-    /// @param p: Charging parameters structure
+    /**
+     * @brief Constructor with initialization
+     * @param p: Charging parameters structure
+     */
     Trickle_Charger(charge_parm_t &p);
 
     /// @brief Destructor (best practice)
     ~Trickle_Charger();
 
-    /// @brief Run-time handler to manage charging cycle
-    /// @returns Charging state
+    /**
+     * @brief Run-time handler to manage charging cycle
+     * @returns Charging state
+     * @note
+     * Unlike other charging cycles, there is no charging goal when trickle
+     * charging the battery. The normal exit will occur in the form of a
+     * "timeout" condition (i.e. returning `CYCLE_TIMEOUT` state) rather than
+     * a "completed" condition (i.e. returning `CYCLE_DONE` state).
+     */
     cycle_state_t run(void);
  
 private:
