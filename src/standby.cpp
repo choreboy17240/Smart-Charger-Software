@@ -28,7 +28,6 @@ Standby_Charger::~Standby_Charger() {
 
 // Run-time handler to manage charge cycle
 cycle_state_t Standby_Charger::run() {
-
     // No startup time
     state_code = CYCLE_RUNNING;
 

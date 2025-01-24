@@ -43,6 +43,12 @@ void Charge_Cycle::init(const charge_parm_t &p) {
     target_current = p.current_target;
     max_current = p.current_max;
 
+    // Allocate a hardware alarm timer from the pool
+    charge_timer_id = timer_pool.add(0, nullptr);
+    if (charge_timer_id < 0) {
+        Serial.printf("Error: Unable to allocate hardware timer from pool\n");
+    };
+
     // Save timer values
     charge_period_max = p.charge_period_max;
     startup_period = p.startup_period;
@@ -68,26 +74,37 @@ Charge_Cycle::~Charge_Cycle() {};
 void Charge_Cycle::start() {
     state_code = CYCLE_STARTUP;
 
-    // Set the global voltage regulator output at 500 mV below the current
-    // battery voltage to provide a "soft start" that avoids overloading the
-    // regulator when we turn it on!
-    uint32_t battery_voltage = battery.get_voltage_mV();
-    if (battery_voltage < VREG_VOLTAGE_MIN) {
-        // Start at minimum regulator voltage
-        set_voltage = VREG_VOLTAGE_MIN;
-    } else if (battery_voltage > VREG_VOLTAGE_MAX) {
-        // Shouldn't really happen, issue a warning
-        Serial.printf("Warning: Battery voltage above %u mV!\n", VREG_VOLTAGE_MAX);
-        set_voltage = VREG_VOLTAGE_MAX;
+    // Setup the voltage regulator for the cycle
+    if (charger_state == CHARGER_STANDBY) {  
+        // Turn voltage regulator off
+        vreg.set_voltage_mV(VREG_VOLTAGE_MIN);
+        vreg.off();
     } else {
-        // Start just below battery voltage
-        set_voltage = battery_voltage - 100;
+        // Set voltage regulator output at 500 mV below the current battery
+        // voltage to provide a "soft start" that avoids overloading the
+        // regulator when we turn it on!
+        uint32_t battery_voltage = battery.get_voltage_mV();
+        if (battery_voltage < VREG_VOLTAGE_MIN) {
+            // Start at minimum regulator voltage
+            set_voltage = VREG_VOLTAGE_MIN;
+        } else if (battery_voltage > VREG_VOLTAGE_MAX) {
+            // Shouldn't really happen, issue a warning
+            Serial.printf("Warning: Battery voltage above %u mV!\n", VREG_VOLTAGE_MAX);
+            set_voltage = VREG_VOLTAGE_MAX;
+        } else {
+            // Start just below battery voltage
+            set_voltage = battery_voltage - 100;
+        }
+        vreg.set_voltage_mV(set_voltage);
+        vreg.on();
     }
-    vreg.set_voltage_mV(set_voltage);
-    vreg.on();
 
-    // Start the hardware alarm timers
-    charge_timer_id = timer_pool.add(charge_period_max, nullptr);
+    // Start the charging cycle hardware timer
+    if (charge_timer_id >= 0) {
+        timer_pool.set(charge_timer_id, charge_period_max);
+    } else {
+        Serial.printf("Error: Invalid hardware timer found at startup\n");
+    };
 
     // Store the system time when charging cycle starts
     // and initialize the software status message timer
@@ -103,13 +120,13 @@ void Charge_Cycle::start() {
     led_timer = start_time;
 
     // Display startup message and field names to serial console only
-    if (charger_state != CHARGER_STANDBY) {
-        Serial.printf("Starting %s charging cycle\n\n", name_str);
-        Serial.printf("Cycle, Time, \"Bus Voltage\", \"Battery Voltage\", \"Charging Current\"\n");
-    } else {
+    if (charger_state == CHARGER_STANDBY) {
         Serial.printf("Entering standby mode\n");
         Serial.printf("Cycle, Time, \"Battery Voltage\"\n");
-    }
+    } else {
+        Serial.printf("Starting %s charging cycle\n\n", name_str);
+        Serial.printf("Cycle, Time, \"Bus Voltage\", \"Battery Voltage\", \"Charging Current\"\n");
+    };
 
     // Clear OLED display to prepare for new charging cycle messages
     if (oled_found) {
@@ -137,9 +154,7 @@ cycle_state_t Charge_Cycle::state() {
 // Get remaining startup time
 // Startup time must always be shorter than the charging timeout!
 uint32_t Charge_Cycle::startup_time_remaining(void) {
-    // FIXME: Created variable for debugging purposes
     uint32_t charging_elapsed = charging_time_elapsed();
-
     if (charging_elapsed >= startup_period) {
         return 0;
     } else {
@@ -149,14 +164,12 @@ uint32_t Charge_Cycle::startup_time_remaining(void) {
 
 // Get remaining charging time
 uint32_t Charge_Cycle::charging_time_remaining(void) {
-    // FIXME: Created variable for debugging purposes
     uint32_t charging_timer = timer_pool.get(charge_timer_id);
     return charging_timer;
 }
 
 // Get elapsed charging time
 uint32_t Charge_Cycle::charging_time_elapsed(void) {
-    // FIXME: Created variable for debugging purposes
     uint32_t elapsed_time = timer_pool.elapsed(charge_timer_id);
     return elapsed_time;
 }

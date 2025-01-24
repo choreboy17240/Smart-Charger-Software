@@ -107,6 +107,22 @@ Here's how each of these fields impact the charging cycles to which they are pas
 * **display_period**: Time period (ms) between updates to any attached OLED display (if present).  This parameter is used by all charging cyles.
 * **message_period**: Time period (ms) between status messages sent to the serial console. This parameter is used by all charging cyles.
 
+#### Hardware timer resources used
+
+**Charging cycle timer**
+
+Software timers are used for most events, with the exception of the charging cycle timer. This timer uses a hardware timer provided by the `stm32_time` library. As of revision v0.5, the hardware timer used is defined as `TIM3` in the `stm32_time.h` file in the library directory.
+
+**RGB LED PWM control**
+
+In the STM32G030 microcontroller, the GPIO pins PB6, PB7, and PB8 are associated with specific timers that facilitate PWM functionality. When using the STM32Duino framework, the RGB pins are mapped to the following hardware timers:
+
+- Red (PB8): TIM16, Channel 1
+- Green (PB7): TIM17, Channel 1
+- Blue (PB6): TIM16, Channel 1
+
+ChatGPT noted that both PB6 and PB8 are associated with TIM16, Channel 1. It warned that configuring PWM on both pins simultaneously requires careful management to avoid conflicts, as they share the same timer channel.
+
 #### Software filtering of current and voltage readings
 
 Charging current readings were found to be a bit volatile and erratic in early
@@ -198,5 +214,17 @@ using the `AVG_READINGS` constant in the `battery.cpp` file.
         addition to the existing `message_period`, which now only applies
         to the console status messages.
 
+* 0.6 01/24/2025
+      - Fixed bug with startup initialization in the setup() function in the
+        `main` module. Forgot to add the inialization step for the 
+        `standby_charger` handler instance, which caused some strange issues
+        with the standby cycle terminating immediately.
+      - Fixed bug with hardware timer usage by the base `Charge_Cycle` class
+        in the `cycle` module. The `start()` method was allocating a new
+        hardware timer from the pool every time, and was also not verifying 
+        whether the timer was successfully allocated. Moved the timer
+        allocation request to the `init()` method, and updated the `start()`
+        method to set the existing hardware timer to the charging cycle
+        period.
 
       

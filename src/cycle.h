@@ -138,7 +138,7 @@ const charge_parm_t TRCKL_PARMS = {
     .current_max = 1000,                    // 1 amp limit for power supply
     .voltage_target = 13500,
     .voltage_step = 10,
-    .charge_period_max = 1*HOUR_MS,         // FIXME: Update to 8 hours
+    .charge_period_max = 8*HOUR_MS,
     .startup_period = 0,                    // Ignored for trickle charging
     .led_on_period = 250,
     .led_off_period = 2750,
@@ -146,7 +146,7 @@ const charge_parm_t TRCKL_PARMS = {
     .title_str = "TRCKLE",
     .name_str = "Trickle",
     .display_period = 1000,
-    .message_period = 15000,
+    .message_period = 60000,
 };
 
 /**
@@ -161,7 +161,7 @@ const charge_parm_t STANDBY_PARMS = {
     .current_max = 0,
     .voltage_target = 0,                        
     .voltage_step = 0,
-    .charge_period_max = 2*HOUR_MS,             // FIXME: Update to weekly or bi-weekly
+    .charge_period_max = WEEK_MS,
     .startup_period = 0,                        // Ignored in standby mode
     .led_on_period = 500,                       // Short green pulse every minute
     .led_off_period = 59500,

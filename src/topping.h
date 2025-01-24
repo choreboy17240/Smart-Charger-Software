@@ -41,7 +41,7 @@
 /**
  * @brief Topping charging cycle handler for SLA batteries
  * 
- * @details Derived from the Charge_Cycle base object, with the run()
+ * @details Derived from the `Charge_Cycle` base object, with the `run()`
  * method overriden to support a topping charging algorithm for SLA
  * (sealed lead-acid) batteries.
  * 
@@ -62,14 +62,13 @@
  * the charging current between the target and maximum current levels.
  * 
  * These parameters are configurable and are set when the handler
- * is initialized using the init() method.  See the documentation
- * for the charge_parm_t structure for details on the configuration
- * parameters for this handler (and others derived from the
- * Charge_Cycle base class).
+ * is initialized using the `init()` method.  See the documentation
+ * for the `charge_parm_t` structure for details on the configuration
+ * parameters for this handler.
  * 
- * See the documentation for the Charge_Cycle base class for more
- * general information on the charging cycle handle infrastructure.
- * 
+ * See the documentation for the `Charge_Cycle base` class and the README
+ * file for more general information on the charging cycle handle 
+ * infrastructure.
  */
 class Topping_Charger : public Charge_Cycle {
 

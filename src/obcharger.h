@@ -17,7 +17,7 @@ const bool VERBOSE_MODE = true;                 ///< Enable verbose mode (true o
 //
 // Software version information (update with new releases)
 //
-#define OBC_VERSION     "0.5"                   ///< Software revision number (x.x)
+#define OBC_VERSION     "0.6"                   ///< Software revision number (x.x)
 #define OBC_RELDATE     "01/24/2025"            ///< Software release date (MM/DD/YYYY)
 
 //

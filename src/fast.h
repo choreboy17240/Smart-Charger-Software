@@ -49,8 +49,8 @@
 /**
  * @brief Fast charging cycle handler for SLA batteries
  * 
- * @details Derived from the Charge_Cycle base object, with the run()
- * methods overriden to support a fast charging algorithm for SLA
+ * @details Derived from the `Charge_Cycle` base object, with the `run()`
+ * method overriden to support a fast charging algorithm for SLA
  * (sealed lead-acid) batteries.
  * 
  * The algorithm implemented by this handler seeks to charge the 
@@ -70,13 +70,13 @@
  * the charging current between the target and maximum current levels.
  * 
  * These parameters are configurable and are set when the handler
- * is initialized using the init() method.  See the documentation
- * for the charge_parm_t structure for details on the configuration
- * parameters for this handler (and others derived from the
- * Charge_Cycle base class).
+ * is initialized using the `init()` method.  See the documentation
+ * for the `charge_parm_t` structure for details on the configuration
+ * parameters for this handler.
  * 
- * See the documentation for the Charge_Cycle base class for more
- * general information on the charging cycle handle infrastructure.
+ * See the documentation for the `Charge_Cycle` base class and the 
+ * README file for more general information on the charging cycle handle
+ * infrastructure.
  */
 class Fast_Charger : public Charge_Cycle {
 

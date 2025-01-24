@@ -247,6 +247,7 @@ void setup() {
     fast_charger.init(FAST_PARMS);
     topping_charger.init(TOP_PARMS);
     trickle_charger.init(TRCKL_PARMS);
+    standby_charger.init(STANDBY_PARMS);
     Serial.printf("- Done\n");
     Serial.printf("\n");
     
@@ -280,12 +281,12 @@ void loop() {
                 // charging cycle. Fast if discharged heavily, topping otherwise.
                 voltage_mv_t battery_voltage = battery.get_voltage_mV();
                 if (battery_voltage <= BATTERY_DISCHARGED_MV) {
-                    Serial.printf("Battery voltage @ %u.%u volts, initiating fast charge\n", 
+                    Serial.printf("Battery voltage @ %u.%u volts, initiating fast charge\n\n", 
                                    battery_voltage/1000, battery_voltage%1000);
                     charger_state = CHARGER_FAST;
                     fast_charger.start();
                 } else {
-                    Serial.printf("Battery voltage @ %u.%u volts, initiating topping charge\n", 
+                    Serial.printf("Battery voltage @ %u.%u volts, initiating topping charge\n\n", 
                                    battery_voltage/1000, battery_voltage%1000);
                     charger_state = CHARGER_TOPPING;
                     topping_charger.start();
@@ -301,8 +302,7 @@ void loop() {
                         break;
                     case CYCLE_DONE:
                         // Charging done, move to topping charge
-                        Serial.printf("Fast charging cycle completed!\n");
-                        Serial.printf("Initiating topping charge cycle\n");
+                        Serial.printf("Fast charging cycle completed\n\n");
                         charger_state = CHARGER_TOPPING;
                         topping_charger.start();
                         break;
@@ -331,8 +331,7 @@ void loop() {
                         break;
                     case CYCLE_DONE:
                         // Charge done, move to trickle charge
-                        Serial.printf("Topping charging cycle completed!\n");
-                        Serial.printf("Initiating trickle charge cycle\n");
+                        Serial.printf("Topping charging cycle completed\n\n");
                         charger_state = CHARGER_TRICKLE;
                         trickle_charger.start();
                         break;
@@ -362,7 +361,7 @@ void loop() {
                     case CYCLE_DONE:
                     case CYCLE_TIMEOUT:
                         // Charge done, move to standby mode
-                        Serial.printf("Trickle charging cycle completed!\n");
+                        Serial.printf("Trickle charging cycle completed\n\n");
                         charger_state = CHARGER_STANDBY;
                         standby_charger.start();
                         break;
@@ -383,16 +382,14 @@ void loop() {
                 switch (standby_charger.run()) {
                     case CYCLE_RUNNING:
                         break;
-                    case CYCLE_DONE:
-                    case CYCLE_TIMEOUT: {
-                        // Standby mode over, time to restart active charging
-                        Serial.printf("Exiting standby mode\n");
+                    case CYCLE_TIMEOUT:
+                        // Standby mode is over, time to restart active charging
+                        Serial.printf("Exiting standby mode\n\n");
                         // Check current battery voltage to determine the appropriate
                         // charging cycle. Fast if discharged heavily, trickle otherwise.
-                        voltage_mv_t battery_voltage = battery.get_voltage_average_mV();
                         char bv_str[6];  // Temporary buffer for battery voltage
-                        milliunits_to_string(battery_voltage, 1, bv_str, sizeof(bv_str));
-                        if (battery_voltage <= BATTERY_DISCHARGED_MV) {
+                        milliunits_to_string(battery.get_voltage_average_mV(), 1, bv_str, sizeof(bv_str));
+                        if (battery.get_voltage_average_mV() <= BATTERY_DISCHARGED_MV) {
                             Serial.printf("Battery voltage @ %s volts, starting fast charge\n", bv_str);
                             charger_state = CHARGER_FAST;
                             fast_charger.start();
@@ -402,7 +399,6 @@ void loop() {
                             trickle_charger.start();
                         };
                         break;
-                    }
                     default:
                         Serial.printf("Standby mode handler returned unknown status!\n");
                         charger_state = CHARGER_SHUTDOWN;
