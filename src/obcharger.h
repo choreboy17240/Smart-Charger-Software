@@ -17,8 +17,8 @@ const bool VERBOSE_MODE = true;                 ///< Enable verbose mode (true o
 //
 // Software version information (update with new releases)
 //
-#define OBC_VERSION     "0.4"                   ///< Software revision number (x.x)
-#define OBC_RELDATE     "01/23/2025"            ///< Software release date (MM/DD/YYYY)
+#define OBC_VERSION     "0.5"                   ///< Software revision number (x.x)
+#define OBC_RELDATE     "01/24/2025"            ///< Software release date (MM/DD/YYYY)
 
 //
 // Application-specific type definitions
@@ -70,6 +70,15 @@ enum cycle_state_t {
     CYCLE_DONE = 4,                         ///< Cycle terminated normally
     CYCLE_ERROR = 5,                        ///< Hardware error detected
     CYCLE_TIMEOUT = 6,                      ///< Cycle timed-out without reaching target
+};
+
+/**
+ *  @brief Display devices for showing status messages
+ */
+enum display_t {
+    DISPLAY_NONE = 0,                       ///< No display
+    DISPLAY_CONSOLE = 1,                    ///< Serial console
+    DISPLAY_OLED = 2,                       ///< OLED display (optional)
 };
 
 //

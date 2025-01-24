@@ -364,6 +364,7 @@ void loop() {
                         // Charge done, move to standby mode
                         Serial.printf("Trickle charging cycle completed!\n");
                         charger_state = CHARGER_STANDBY;
+                        standby_charger.start();
                         break;
                     case CYCLE_ERROR:
                         // Hardware error detected

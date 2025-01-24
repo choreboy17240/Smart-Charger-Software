@@ -95,11 +95,16 @@ cycle_state_t Fast_Charger::run() {
     // Update RGB LED status as needed
     status_led();
 
-    // Update console and any attached displays periodically
+    // Update any attached OLED displays
+    if (millis() - display_timer >= display_period) {
+        display_timer = millis();
+        status_message(DISPLAY_OLED);
+    }
+
+    // Update serial console
     if (millis() - message_timer >= message_period) {
-        // Time to update console and any attached displays
         message_timer = millis();
-        status_message();
+        status_message(DISPLAY_CONSOLE);
     }
 
     // Normal exit

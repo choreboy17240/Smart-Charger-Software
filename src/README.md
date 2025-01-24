@@ -68,27 +68,27 @@ Global typedefs and constants are declared in the `obcharger.h` file.
 
 #### Configuring charge cycle parameters
 
-Charging cycles parameters are configured at compile time based on the values
+Charging cycles parameters are configured at compile time by adjusting values
 of fields in the `charge_parm_t` structure defined for each charge cyle in the
 `cycle.h` file.  These values can be modified to customize each charge cycle
 to the battery to be charged.
 
-As of revision v0.3, the `charge_parm_t` structure is defined as follows:
+As of revision v0.5, the `charge_parm_t` structure is defined as follows:
 
     struct charge_parm_t {
         current_ma_t current_target;            ///< Target charging current
         current_ma_t current_max;               ///< Maximum charging current
         voltage_mv_t voltage_target;            ///< Target battery voltage
         voltage_mv_t voltage_step;              ///< Step size for adjusting voltage
-        time_ms_t charge_period_max;            ///< Maximum allowable charging time
+        time_ms_t charge_period_max;            ///< Maximum allowable cycle time
         time_ms_t startup_period;               ///< Startup time period
-        time_ms_t idle_period;                  ///< Idle time between charges (standby mode only)
         time_ms_t led_on_period;                ///< Status LED on time while charging
         time_ms_t led_off_period;               ///< Status LED off time while charging
         rgb_t led_color;                        ///< Status LED color while charging
         const char *title_str;                  ///< Charge cycle title (6 chars) for LCD display (e.g. "FAST  ")
-        const char *name_str;                   ///< Charge cycle name for serial output (e.g. 'Fast')
-        time_ms_t message_period;               ///< Time between console and OLED message updates
+        const char *name_str;                   ///< Charge cycle name for serial output (e.g. 'fast')
+        time_ms_t display_period;               ///< Time between OLED display updates
+        time_ms_t message_period;               ///< Time between serial console message updates
     };
 
 Here's how each of these fields impact the charging cycles to which they are passed:
@@ -97,15 +97,15 @@ Here's how each of these fields impact the charging cycles to which they are pas
 * **current_max**: Maximum charging current (mA) which the handler will allow, to avoid damage to the battery being charged.  This parameter is used by all active charging cycles (fast, topping, trickle).
 * **voltage_target**: Target battery voltage (mV) that the handler will try to achieve during the charging cycle. This parameter is used by all active charging cycles (fast, topping, trickle).
 * **voltage_step**: Step size (mV) to be used for adjusting the regulator voltage. This parameter is used by all active charging cycles (fast, topping, trickle).
-* **charge_period_max**: Maximum time (ms) that the handler will allow for the cycle. If the target goal for the cycle is not reached within this time period, the handler will shut-off the regulator to avoid battery damage and return a `CYCLE_TIMEOUT` state to the `loop()` function.  This parameter is used by all active charging cycles (fast, topping, trickle).
+* **charge_period_max**: Maximum time (ms) that the handler will allow for the cycle. If the target goal for the cycle is not reached within this time period, the handler will shut-off the regulator to avoid battery damage and return a `CYCLE_TIMEOUT` state to the `loop()` function.  This parameter is used by all charging cycles.
 * **startup_period**: Special time period (ms) allowed at the beginning a charge cycle to allow the battery being charged to stabilize (e.g. battery voltage float to dissipate). This parameter forces the handler to delay checking whether the cycle's goals have been achieved until after the startup period has expired, avoiding premature decisions on whether the charging cycle's goal has been achieved.  This parameter is used by all active charging cycles (fast, topping, trickle).
-* **idle_period**: Time period (ms) used exclusively by the standby mode to determine how long to wait before resuming active charging of the battery. The voltage regulator will be shut-off during standby mode, but displays will be updated periodically (typically at a slower rate) to reflect the standby time and current battery voltage.  This parameter is only used by the standby mode.
 * **led_on_period**: Time period (ms) that the RGB LED will be illuminated during the charging cycle. This parameter is used by all charging cycles.
 * **led_off_period**: Time period (ms) that the RGB LED will be turned off during the charging cycle. This parameter is used by all charging cycles.
 * **led_color**: Color to be used by the RGB LED when illuminated during the charging cycle. The `rgb_t` structure is used to pass 8-bit RGB values to represent the color.  This parameter is used by all charging cycles.
-* **title_str**: A short (6 characters) title for the charge cycle (e.g. "FAST  ") to be displayed on the OLED display for status updates. This parameter is used by all charging cycles.
+* **title_str**: A short title (six characters, pad with spaces for shorter titles) for the charge cycle (e.g. "FAST  ") to be displayed on the OLED display for status updates. This parameter is used by all charging cycles.
 * **name_str**: A longer descriptive name for the charge cycle (e.g. "Fast") to be displayed in console status messages. This parameter is used by all charging cycles.
-* **message_period**: Time period (ms) between updates to the console and OLED status messages. The frequency can be varied depending on how volatile the charging cycle is expected to be. Fast charging would likely require frequent updates, while the long standby mode can be much less timely given the limited action. This parameter is used by all charging cycles.
+* **display_period**: Time period (ms) between updates to any attached OLED display (if present).  This parameter is used by all charging cyles.
+* **message_period**: Time period (ms) between status messages sent to the serial console. This parameter is used by all charging cyles.
 
 #### Software filtering of current and voltage readings
 
@@ -186,6 +186,17 @@ using the `AVG_READINGS` constant in the `battery.cpp` file.
         four hours to help speed-up validation testing.  These will need to be
         set to "normal" durations for the official release.
 
+* 0.5 01/24/2025
+      - Fixed bug that was causing the standby mode to exit immediately after
+        entry. The cycle `start()` method didn't reflect the use of a separate
+        configurable parameter for the standby time period. Eliminated the
+        separate parameter, now using the existing `charge_period_max` parameter
+        to specify the standby period.
+      - Revised to allow updates to the OLED display and console status messages
+        to occur at independent intervals. The configuration structure now
+        provides a `display_period` parameter for OLED display updates, in
+        addition to the existing `message_period`, which now only applies
+        to the console status messages.
 
 
       

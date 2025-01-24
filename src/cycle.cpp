@@ -46,7 +46,6 @@ void Charge_Cycle::init(const charge_parm_t &p) {
     // Save timer values
     charge_period_max = p.charge_period_max;
     startup_period = p.startup_period;
-    idle_period = p.idle_period;
 
     // Save status LED parameters
     led_off_period = p.led_off_period;
@@ -57,7 +56,8 @@ void Charge_Cycle::init(const charge_parm_t &p) {
     title_str = p.title_str;
     name_str = p.name_str;
 
-    // Set the message update period
+    // Set the status update periods
+    display_period = p.display_period;
     message_period = p.message_period;
 }
 
@@ -92,6 +92,7 @@ void Charge_Cycle::start() {
     // Store the system time when charging cycle starts
     // and initialize the software status message timer
     start_time = millis();
+    display_timer = start_time;
     message_timer = start_time;
 
     // Initialize LED to the 'on' state, with the specified color for
@@ -223,57 +224,63 @@ void milliunits_to_string(uint32_t milliunits, uint8_t places, char *buffer, uin
     snprintf(buffer, buffer_len, "%d.%0*d", whole, places, fractional);
 }
 
-// Write status information to serial console and any attached displays
-//
-// Console message format:
-// <title_str> HH:MM:SS Battery=xx.x V, xxxx mA
-//
-// OLED display message format:
-// 0123456789012345
-// TTTTTT  HH:MM:SS
-// xx.x V   xxxx mA
-//
-// OLED display message sized to fit 16x2 character display.
-// TTTTTT = Charge cycle title to be displayed
-//
-void Charge_Cycle::status_message() {
-    if ((state_code == CYCLE_STARTUP) || (state_code == CYCLE_RUNNING)) {
-        // Display charging status
+/*
+ * Write status information to serial console when a charging cycle is in
+ * startup and running states.
+ *
+ * Console message format:
+ * 
+ *  <title_str>, HH:MM:SS, xx.x, xx.x, xxxx
+ * 
+ * OLED display format, which is sized to simulate a 16x2 character display:
+ * 
+ *  0123456789012345
+ *  TTTTTT  HH:MM:SS
+ *  xx.x V   xxxx mA
+ *
+ *  TTTTTT = Charge cycle title to be displayed
+ */
+void Charge_Cycle::status_message(display_t device) {
+    // Retrieve charging parameters
+    current_ma_t charging_current = (uint32_t)(rb_charging_current.average());
+    voltage_mv_t battery_voltage_mV = battery.get_voltage_average_mV();
+    voltage_mv_t bus_voltage_mV = vreg.get_voltage_mV();
+    
+    // Get elapsed time as a string (HH:MM:SS)
+    ms_to_hms_str(charging_time_elapsed(), hms_str);
 
-        // Get current charging parameters
-        // current_ma_t charging_current = vreg.get_current_mA();
-        // current_ma_t charging_current = vreg.get_current_average_mA();
-        current_ma_t charging_current = (uint32_t)(rb_charging_current.average());
-        voltage_mv_t battery_voltage_mV = battery.get_voltage_average_mV();
-        voltage_mv_t bus_voltage_mV = vreg.get_voltage_mV();
-        
-        // Create elapsed time string (HH:MM:SS) in hms_str buffer
-        // ms_to_hms_str(millis()-start_time, hms_str);
-        ms_to_hms_str(charging_time_elapsed(), hms_str);
+    // Get battery voltage as a string (xx.x)
+    milliunits_to_string(battery_voltage_mV, 1, bv_str, sizeof(bv_str));
 
-        // Create battery voltage string (xx.x) in bv_str buffer
-        milliunits_to_string(battery_voltage_mV, 1, bv_str, sizeof(bv_str));
+    // Create bus output voltage as a string string (xx.x)
+    milliunits_to_string(bus_voltage_mV, 1, ov_str, sizeof(ov_str));
 
-        // Create output voltage string (xx.x) in ov_str butter
-        milliunits_to_string(bus_voltage_mV, 1, ov_str, sizeof(ov_str));
-
-        // Write message to OLED display if present
-        // Assumes display is configured for the default 8x16 proportional font
-        // Note: OLED display is cleared at the start of charging cycle
-        if (oled_found) {
-            oled.clear();
-            oled.setCursor(0,0);
-            oled.printf("%s", title_str);
-            oled.setCursor(64,0);
-            oled.printf("%s", hms_str);
-            oled.setCursor(0,2);
-            oled.printf("%s V", bv_str);
-            oled.setCursor(64,2);
-            oled.printf("%u mA", charging_current);
-            oled.switchFrame();
-        }
-
-        // Write console message
-        Serial.printf("%s, %s, %s, %s, %u\n", name_str, hms_str, ov_str, bv_str, charging_current);
+    switch (device) {
+        case DISPLAY_NONE:      // No display present
+            break;
+        case DISPLAY_CONSOLE:   // Serial console
+            Serial.printf("%s, %s, %s, %s, %u\n", name_str, hms_str, ov_str, bv_str, charging_current);
+            break;
+        case DISPLAY_OLED:      // OLED display
+            // Write message to OLED display if present
+            // Assumes display is configured for the default 8x16 proportional font
+            // Note: OLED display is cleared at the start of charging cycle
+            if (oled_found) {
+                oled.clear();
+                oled.setCursor(0,0);
+                oled.printf("%s", title_str);
+                oled.setCursor(64,0);
+                oled.printf("%s", hms_str);
+                oled.setCursor(0,2);
+                oled.printf("%s V", bv_str);
+                oled.setCursor(64,2);
+                oled.printf("%u mA", charging_current);
+                oled.switchFrame();
+            } else {
+                Serial.printf("Error: OLED status was requested, but display not present\n");
+            }
+            break;
+        default:                // Unknown device
+            Serial.printf("Error: Unknown display device %d\n", int(device));
     }
 }

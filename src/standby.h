@@ -107,12 +107,13 @@ public:
     cycle_state_t run(void);
  
     /**
-     *  @brief Write status information for standby mode to the serial
-     *         console and any attached displays. Overrides the 
-     *         `status_message()` in the base class.
+     *  @brief Write status information for standby mode to the targeted
+     *         display device. Overrides the `status_message()` method in
+     *         the base class to support unique format for standby mode.
+     *  @param Targeted display device for status update
      *  @returns Nothing
      */
-    void status_message(void);
+    void status_message(display_t device);
 
 private:
 

@@ -60,15 +60,15 @@ struct charge_parm_t {
     current_ma_t current_max;               ///< Maximum charging current
     voltage_mv_t voltage_target;            ///< Target battery voltage
     voltage_mv_t voltage_step;              ///< Step size for adjusting voltage
-    time_ms_t charge_period_max;            ///< Maximum allowable charging time
+    time_ms_t charge_period_max;            ///< Maximum allowable cycle time
     time_ms_t startup_period;               ///< Startup time period
-    time_ms_t idle_period;                  ///< Idle time between charges (standby mode only)
     time_ms_t led_on_period;                ///< Status LED on time while charging
     time_ms_t led_off_period;               ///< Status LED off time while charging
     rgb_t led_color;                        ///< Status LED color while charging
     const char *title_str;                  ///< Charge cycle title (6 chars) for LCD display (e.g. "FAST  ")
     const char *name_str;                   ///< Charge cycle name for serial output (e.g. 'fast')
-    time_ms_t message_period;               ///< Time between console and OLED message updates
+    time_ms_t display_period;               ///< Time between OLED display updates
+    time_ms_t message_period;               ///< Time between serial console message updates
 };
 
 /**
@@ -92,12 +92,12 @@ const charge_parm_t FAST_PARMS = {
     .voltage_step = 10,
     .charge_period_max = 4*HOUR_MS,
     .startup_period = 60*SECOND_MS,
-    .idle_period = 0,                       // Ignored for fast charging
     .led_on_period = 250,
     .led_off_period = 750,
     .led_color = LED_BLU_DRK,
     .title_str = "FAST  ",
     .name_str = "Fast",
+    .display_period = 1000,
     .message_period = 1000,
 };
 
@@ -116,12 +116,12 @@ const charge_parm_t TOP_PARMS = {
     .voltage_step = 10,
     .charge_period_max = 8*HOUR_MS,
     .startup_period = 120*SECOND_MS,
-    .idle_period = 0,                       // Ignored for topping charging
     .led_on_period = 250,
     .led_off_period = 1000,
     .led_color = LED_YLW_DRK,
     .title_str = "TOPPNG",
     .name_str = "Topping",
+    .display_period = 1000,
     .message_period = 1000,
 };
 
@@ -138,15 +138,15 @@ const charge_parm_t TRCKL_PARMS = {
     .current_max = 1000,                    // 1 amp limit for power supply
     .voltage_target = 13500,
     .voltage_step = 10,
-    .charge_period_max = 4*HOUR_MS,         // FIXME: Update to 8 hours
-    .startup_period = 60*SECOND_MS,         // Ignored for trickle charging
-    .idle_period = 0,                       // Ignored for trickle charging
+    .charge_period_max = 1*HOUR_MS,         // FIXME: Update to 8 hours
+    .startup_period = 0,                    // Ignored for trickle charging
     .led_on_period = 250,
     .led_off_period = 2750,
     .led_color = LED_GRN_DRK,
     .title_str = "TRCKLE",
     .name_str = "Trickle",
-    .message_period = 60000,
+    .display_period = 1000,
+    .message_period = 15000,
 };
 
 /**
@@ -161,17 +161,16 @@ const charge_parm_t STANDBY_PARMS = {
     .current_max = 0,
     .voltage_target = 0,                        
     .voltage_step = 0,
-    .charge_period_max = 0,                     // Ignored
-    .startup_period = 0,                        // Ignored
-    .idle_period = 4*HOUR_MS,                   // FIXME: Update to weekly or bi-weekly
+    .charge_period_max = 2*HOUR_MS,             // FIXME: Update to weekly or bi-weekly
+    .startup_period = 0,                        // Ignored in standby mode
     .led_on_period = 500,                       // Short green pulse every minute
     .led_off_period = 59500,
     .led_color = LED_GRN_DRK,
     .title_str = "STNDBY",
     .name_str = "Standby",
+    .display_period = 1000,
     .message_period = 60000,
 };
-
 
 /**
  * @brief Base class for deriving charge cycle handler classes
@@ -276,13 +275,22 @@ protected:
     current_ma_t target_current;            ///< Target current to be used for charging battery (mA).
     current_ma_t max_current;               ///< Maximum current to be used for charging battery (mA).
 
-    // Time period settings
-    time_ms_t message_period;               ///< Status message update time period (ms).
-    time_ms_t charge_period_max;            ///< Maximum charge time period (ms).
-    time_ms_t idle_period;                  ///< Idle time between charges for the storage cycle (ms).
-    time_ms_t startup_period;               ///< Startup time period (ms) to allow parameters to stabilize.
+    // Hardware alarm timers
+    alarm_id_t charge_timer_id;             ///< Hardware charging timer ID provided by the `Alarm_Pool`.
 
-    // LED settings
+    // Software timers
+    time_ms_t display_timer;                ///< Timer for OLED display updates
+    time_ms_t message_timer;                ///< Timer for writing console status messages
+    time_ms_t led_timer;                    ///< Timer for updating the RGB LED
+
+    // Time period settings
+    time_ms_t display_period;               ///< Time period between OLED display updates (ms).
+    time_ms_t message_period;               ///< Time period between console status messages (ms).
+    time_ms_t charge_period_max;            ///< Maximum time period allowed for the cycle to complete (ms).
+    time_ms_t startup_period;               ///< Time period to allow at start of the cycle for things to stabilize (ms).
+
+    // RGB LED settings
+    bool led_state;                         ///< RGB LED state (true=on, false=off)
     time_ms_t led_off_period;               ///< RGB LED blink off time (ms).
     time_ms_t led_on_period;                ///< RGB LED blink on time (ms).
     rgb_t led_color;                        ///< RGB LED color.
@@ -291,14 +299,6 @@ protected:
     cycle_state_t state_code;               ///< Current charging cycle state.
     voltage_mv_t set_voltage;               ///< Current voltage regulator set voltage (mV).
     time_ms_t start_time;                   ///< millis() time at the start of the charging cycle.
-
-    // Software timers
-    time_ms_t message_timer;                ///< Message update timer (uses message_period)
-    time_ms_t led_timer;                    ///< RGB LED update timer
-    bool led_state;                         ///< RGB LED state (true=on, false=off)
-
-    // Hardware alarm timers
-    alarm_id_t charge_timer_id;             ///< Hardware charging timer ID provided by the `Alarm_Pool`.
 
     // Status message buffers
     char hms_str[9];                        ///< Buffer for 'HH:MM:SS' time string.
@@ -309,6 +309,8 @@ protected:
     const char *title_str;                  ///< Charge cycle title for LCD display messages (6 characters).
     const char *name_str;                   ///< Charge cycle name for serial console messages.
 
+    // Private functions
+
     /** 
      *  @brief Update the status of the RGB LED, based on the color and
      *         timing criteria specified for the current cycle.
@@ -317,11 +319,12 @@ protected:
     void status_led(void);
 
     /**
-     *  @brief Write status information for the current cycle to the serial
-     *         console and any attached displays.
+     *  @brief Write status information for the current charging cycle to the
+     *         selected display device
+     *  @param device: Target display device for displaying status information
      *  @returns Nothing
      */
-    virtual void status_message(void);
+    virtual void status_message(display_t device);
 };
 
 /**
