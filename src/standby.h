@@ -96,7 +96,7 @@ public:
      *  @brief Write status information for standby mode to the targeted
      *         display device. Overrides the `status_message()` method in
      *         the base class to support unique format for standby mode.
-     *  @param Targeted display device for status update
+     *  @param device: Targeted display device for status update
      *  @returns Nothing
      */
     void status_message(display_t device);

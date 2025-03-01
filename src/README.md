@@ -2,6 +2,12 @@
 
 Software support for the STM32-based intelligent battery charger/control module.
 
+### Build Instructions
+
+Build as an Arduino application using the `stm32duino` framework under PlatformIO.
+Comprehensive support for compiling, debugging and flashing the target device
+using the ST-Link/V2 probe are provided under PlatformIO.
+
 ### Concept of Operation
 
 From a high-level the sequence of operations performed the charger after 
@@ -227,4 +233,12 @@ using the `AVG_READINGS` constant in the `battery.cpp` file.
         method to set the existing hardware timer to the charging cycle
         period.
 
-      
+* 0.7 02/28/2025
+      - Fixed message handling when no OLED display is connected. Updated
+        the cycle handlers to avoid sending status messages to the OLED
+        display if it wasn't detected at startup.
+
+* 0.8 02/28/2025
+      - Lowered maximum charging current to 600mA for all charging cycles,
+        after checking the temperature rise of the voltage regulator
+        under continual fast charging with depleted battery.

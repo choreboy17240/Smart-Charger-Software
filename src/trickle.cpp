@@ -10,6 +10,7 @@
 extern Alarm_Pool timer_pool;               // Hardware timers
 extern Vreg vreg;                           // Voltage regulator
 extern Battery battery;                     // Battery
+extern bool oled_found;                     // OLED display found at startup in main()?
 
 // Default constructor
 Trickle_Charger::Trickle_Charger() : Charge_Cycle() {
@@ -69,7 +70,9 @@ cycle_state_t Trickle_Charger::run() {
     // Update any attached OLED displays
     if (millis() - display_timer >= display_period) {
         display_timer = millis();
-        status_message(DISPLAY_OLED);
+        if (oled_found) {
+            status_message(DISPLAY_OLED);
+        }
     }
 
     // Update serial console

@@ -48,7 +48,9 @@ cycle_state_t Standby_Charger::run() {
     // Update any attached OLED displays
     if (millis() - display_timer >= display_period) {
         display_timer = millis();
-        status_message(DISPLAY_OLED);
+        if (oled_found) {
+            status_message(DISPLAY_OLED);
+        }
     }
 
     // Update serial console

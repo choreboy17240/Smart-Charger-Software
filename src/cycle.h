@@ -87,7 +87,7 @@ struct charge_parm_t {
  */
 const charge_parm_t FAST_PARMS = { 
     .current_target = BATTERY_CAPACITY/7,   // @14% capacity
-    .current_max = 1000,                    // 1 amp limit for power supply
+    .current_max = 600,                     // 600 mA due to regulator temp rise
     .voltage_target = 14400,
     .voltage_step = 10,
     .charge_period_max = 4*HOUR_MS,
@@ -111,7 +111,7 @@ const charge_parm_t FAST_PARMS = {
  */
 const charge_parm_t TOP_PARMS = { 
     .current_target = BATTERY_CAPACITY/20,  // @5% capacity
-    .current_max = 1000,                    // 1 amp limit for power supply
+    .current_max = 600,                     // 600 mA due to regulator temp rise
     .voltage_target = 14000,                // 14.0V => 2.33V/cell
     .voltage_step = 10,
     .charge_period_max = 8*HOUR_MS,
@@ -135,7 +135,7 @@ const charge_parm_t TOP_PARMS = {
  */
 const charge_parm_t TRCKL_PARMS = { 
     .current_target = 0,                    // Not applicable for trickle charging
-    .current_max = 1000,                    // 1 amp limit for power supply
+    .current_max = 600,                     // 600 mA due to regulator temp rise
     .voltage_target = 13500,
     .voltage_step = 10,
     .charge_period_max = 8*HOUR_MS,
@@ -163,8 +163,8 @@ const charge_parm_t STANDBY_PARMS = {
     .voltage_step = 0,
     .charge_period_max = WEEK_MS,
     .startup_period = 0,                        // Ignored in standby mode
-    .led_on_period = 500,                       // Short green pulse every minute
-    .led_off_period = 59500,
+    .led_on_period = 250,                       // Short green pulse every minute
+    .led_off_period = 59750,
     .led_color = LED_GRN_DRK,
     .title_str = "STNDBY",
     .name_str = "Standby",
