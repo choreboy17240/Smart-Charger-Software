@@ -24,10 +24,18 @@ typedef struct {
 hms_time_t ms_to_hms_time(time_ms_t period_ms);
 
 /** 
- *  @brief Convert a time period in ms to an 'HH:MM:SS' string
+ *  @brief Convert a time period in ms to an ASCII string representation with 
+ *         'appropriate' resolution.
  *  @param period_ms: Time period to convert (ms).
  *  @param buffer: Character buffer large enough to hold resulting ASCIIZ string.
- *  @returns ASCIIZ string representation of the time period in `HH:MM:SS` format.
+ *  @returns ASCIIZ string representation of the time period
+ *  @note
+ *  If the time period is less than 100 hours, the time period will be displayed
+ *  in `HH:MM:SS` format. If at or more than 100 hours, the resolution will be
+ *  reduced to minutes, and the time period will be displayed in `HHH:MM  `
+ *  format. This ensures that we have adequate space on fixed-width displays
+ *  to show the elapsed time.  Since 100 hours is 41 days, this resolution
+ *  should be sufficient for this application.
  */
 void ms_to_hms_str(time_ms_t period_ms, char *buffer);
 

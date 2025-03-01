@@ -13,9 +13,17 @@ hms_time_t ms_to_hms_time(time_ms_t period_ms) {
     return hms_time_t { hours, mins, secs };
 }
 
-// Converts timer period in ms to an 'HH:MM:SS' string
+
+// Converts timer period in ms to a 'HH:MM:SS' or 'HHH:MM' string,
+// depending on the length of the period.
 void ms_to_hms_str(time_ms_t period_ms, char *buffer) {
     hms_time_t hms = ms_to_hms_time(period_ms);
-    int n = sprintf(buffer, "%02u:%02u:%02u", hms.hours, hms.mins, hms.secs);
+    if (hms.hours < 100) {
+        // High-resolution time period (HH:MM:SS)
+        int n = sprintf(buffer, "%02u:%02u:%02u", hms.hours, hms.mins, hms.secs);
+    } else {
+        // Low-resolution time period (HHH:MM)
+        int n = sprintf(buffer, "%03u:%02u", hms.hours, hms.mins);
+    }
 }
 

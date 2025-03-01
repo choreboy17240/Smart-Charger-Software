@@ -242,3 +242,12 @@ using the `AVG_READINGS` constant in the `battery.cpp` file.
       - Lowered maximum charging current to 600mA for all charging cycles,
         after checking the temperature rise of the voltage regulator
         under continual fast charging with depleted battery.
+
+* 0.9 02/28/2025
+      - Updated the `ms_to_hms_str()` function in the utility module to
+        to drop the time period display resolution from `HH:MM:SS` to
+        `HH:MM` once the time period reaches 100 hours.  This ensures
+        that the time display will fit within the OLED display, and
+        is a reasonable resolution for timing really long periods.
+        This will likely only happen when we're in the `standby` mode,
+        since 100 hours equates to more than 4 days.
