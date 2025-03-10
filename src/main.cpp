@@ -1,8 +1,11 @@
 /**
  *  @file main.cpp
- * 
  *  @brief Main source file with setup() and loop() functions
  * 
+ *  Copyright(c) 2025  John Glynn
+ * 
+ *  This code is licensed under the MIT License.
+ *  See the LICENSE file for the full license text.
  */
 
 #include <Arduino.h>

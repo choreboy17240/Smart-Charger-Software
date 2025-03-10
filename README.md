@@ -153,6 +153,18 @@ also takes four consecutive readings from the ADC and averages them to
 get a somewhat smoothed value.  The number of readings can be configured
 using the `AVG_READINGS` constant in the `battery.cpp` file.
 
+### License
+
+Although my intent is for this overall work to be subject to the MIT License
+(see `LICENSE` file), the `STM32_4kOLED` library is based on the wonderful work
+done by Stephen Denne (and others) in creating the 'Tiny4kOLED' library for
+SSD3106 displays, available at https://github.com/datacute/Tiny4kOLED.  This
+work is subject to the license terms for this library:
+
+MIT License
+Copyright (c) 2017 Stephen Denne
+
+Please see the `LICENSE` file in the subdirectory for complete details.
 
 ### Revision History
 
@@ -251,3 +263,14 @@ using the `AVG_READINGS` constant in the `battery.cpp` file.
         is a reasonable resolution for timing really long periods.
         This will likely only happen when we're in the `standby` mode,
         since 100 hours equates to more than 4 days.
+
+
+* 1.0 03/10/2025
+      - Completed 1.5 week long-term test successfully, to ensure that
+        battery charger moves through the complete charging cycle, 
+        including a one-week standby phase before topping-off the
+        SLA battery.
+      - Added LICENSE file and copyright notices in source code files
+        representing unique contributions by me.
+      - Updating the version to reflect the first 'production' release.
+

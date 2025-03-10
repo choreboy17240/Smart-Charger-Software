@@ -2,6 +2,11 @@
  *  @file topping.h
  *  @brief Topping charging cycle handler for SLA batteries
  * 
+ *  Copyright(c) 2025  John Glynn
+ * 
+ *  This code is licensed under the MIT License.
+ *  See the LICENSE file for the full license text.
+ * 
  *  @details
  *  Called by the exec supervisor to manage the topping charging cycle from
  *  start to finish.  The topping charging algorithm used to charge the 

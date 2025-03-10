@@ -1,6 +1,11 @@
 /** 
  *  @file utility.h
  *  @brief Utility functions for time period representation
+ * 
+ *  Copyright(c) 2025  John Glynn
+ * 
+ *  This code is licensed under the MIT License.
+ *  See the LICENSE file for the full license text.
  */
 #ifndef _UTILITY_H_
 #define _UTILITY_H_

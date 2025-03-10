@@ -1,6 +1,11 @@
 /**
  * @file cycle.cpp
  * @brief Base class for creating custom battery charging cycles handlers
+ * 
+ * Copyright(c) 2025  John Glynn
+ * 
+ * This code is licensed under the MIT License.
+ * See the LICENSE file for the full license text.
  */
 
 #include "obcharger.h"

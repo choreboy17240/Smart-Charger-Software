@@ -1,6 +1,11 @@
 /**
  * @file rgbled.h
  * @brief RGB LED class
+ * 
+ * Copyright(c) 2025  John Glynn
+ * 
+ * This code is licensed under the MIT License.
+ * See the LICENSE file for the full license text.
  */
 #ifndef _RGBLED_H_
 #define _RGBLED_H_

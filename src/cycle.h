@@ -155,6 +155,11 @@ const charge_parm_t TRCKL_PARMS = {
  * @details
  * The voltage regulator is turned-off and we're waiting until the end of the
  * standby cycle to resume active charging.
+ * 
+ * Copyright(c) 2025  John Glynn
+ * 
+ * This code is licensed under the MIT License.
+ * See the LICENSE file for the full license text.
  */
 const charge_parm_t STANDBY_PARMS = { 
     .current_target = 0,                        // Regulator turned-off

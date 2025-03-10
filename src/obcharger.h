@@ -1,6 +1,11 @@
 /**
  * @file obcharger.h
  * @brief On-board charger type definitions and constants
+ * 
+ * Copyright(c) 2025  John Glynn
+ * 
+ * This code is licensed under the MIT License.
+ * See the LICENSE file for the full license text.
  */
 #ifndef _OB_CHARGER_H_
 #define _OB_CHARGER_H_
@@ -17,8 +22,8 @@ const bool VERBOSE_MODE = true;                 ///< Enable verbose mode (true o
 //
 // Software version information (update with new releases)
 //
-#define OBC_VERSION     "0.9"                   ///< Software revision number (x.x)
-#define OBC_RELDATE     "02/28/2025"            ///< Software release date (MM/DD/YYYY)
+#define OBC_VERSION     "1.0"                   ///< Software revision number (x.x)
+#define OBC_RELDATE     "03/10/2025"            ///< Software release date (MM/DD/YYYY)
 
 //
 // Application-specific type definitions

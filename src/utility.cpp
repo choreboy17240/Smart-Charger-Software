@@ -1,6 +1,11 @@
 /** 
  *  @file utility.cpp
  *  @brief Utility functions for time period representation
+ * 
+ *  Copyright(c) 2025  John Glynn
+ * 
+ *  This code is licensed under the MIT License.
+ *  See the LICENSE file for the full license text.
  */
 #include "utility.h"
 #include <stdio.h>
@@ -12,7 +17,6 @@ hms_time_t ms_to_hms_time(time_ms_t period_ms) {
     uint secs  = (period_ms - hours * HOUR_MS - mins * MINUTE_MS) / SECOND_MS;
     return hms_time_t { hours, mins, secs };
 }
-
 
 // Converts timer period in ms to a 'HH:MM:SS' or 'HHH:MM' string,
 // depending on the length of the period.

@@ -1,6 +1,11 @@
 /**
  *  @file regulator.h
  *  @brief Adjustable voltage regulator class
+ * 
+ *  Copyright(c) 2025  John Glynn
+ * 
+ *  This code is licensed under the MIT License.
+ *  See the LICENSE file for the full license text.
  *
  *  @details
  *  Supports On-board Battery Charger Rev 1 hardware design with following features:
@@ -10,8 +15,6 @@
  *  
  *  The voltage setting is adjusted by the MCP4726 DAC output level, with a linear
  *  relationship between the DAC count and the resulting regulator output voltage.
- * 
- *  FIXME: DOCUMENT THE EQUATIONS TO DERIVE OUTPUT VOLTAGE FROM DAC COUNT AND VICE-VERSA
  */
 #ifndef _REGULATOR_H_
 #define _REGULATOR_H_

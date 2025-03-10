@@ -1,6 +1,11 @@
 /**
  *  @file battery.cpp
  *  @brief Battery class with methods to support voltage readings
+ * 
+ *  Copyright(c) 2025  John Glynn
+ * 
+ *  This code is licensed under the MIT License.
+ *  See the LICENSE file for the full license text.
  */
 
 #include "battery.h"

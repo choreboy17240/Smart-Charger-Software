@@ -1,6 +1,11 @@
 /**
  *  @file regulator.cpp
  *  @brief Adjustable voltage regulator class
+ * 
+ *  Copyright(c) 2025  John Glynn
+ * 
+ *  This code is licensed under the MIT License.
+ *  See the LICENSE file for the full license text.
  */
 
 #include "regulator.h"

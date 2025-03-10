@@ -2,6 +2,11 @@
  * @file standby.h
  * @brief Standby mode charging cycle handler for SLA batteries
  * 
+ * Copyright(c) 2025  John Glynn
+ * 
+ * This code is licensed under the MIT License.
+ * See the LICENSE file for the full license text.
+ * 
  * @details
  * Called by the exec supervisor to maintain a standby mode charging cycle
  * from start to finish.  In the standby mode, the voltage regulator is

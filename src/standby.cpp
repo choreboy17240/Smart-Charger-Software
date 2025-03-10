@@ -1,6 +1,11 @@
 /**
  *  @file standby.cpp
  *  @brief Standby mode charging cycle handler for SLA batteries
+ * 
+ *  Copyright(c) 2025  John Glynn
+ * 
+ *  This code is licensed under the MIT License.
+ *  See the LICENSE file for the full license text.
  */
 #include "standby.h"
 
